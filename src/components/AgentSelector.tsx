@@ -106,7 +106,7 @@ export default function AgentSelector({
       >
         <Bot className="h-4 w-4" />
         <span className="hidden sm:inline">
-          {currentSession ? currentSession.agent_name : "Select Agent"}
+          {currentSession ? currentSession.session_name : "Select Agent"}
         </span>
         <ChevronDown className="h-4 w-4" />
       </Button>
@@ -164,7 +164,7 @@ export default function AgentSelector({
                           <div className="flex items-center space-x-2">
                             <Bot className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                             <span className="text-sm font-medium truncate">
-                              {session.agent_name}
+                              {session.session_name}
                             </span>
                           </div>
                           <div className="flex items-center space-x-1 text-xs text-muted-foreground">
