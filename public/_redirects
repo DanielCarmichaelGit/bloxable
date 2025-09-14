@@ -1,0 +1,14 @@
+# Netlify redirects for React SPA
+# This file handles client-side routing for single-page applications
+
+# Redirect all non-file requests to index.html for client-side routing
+/*    /index.html   200
+
+# Optional: Handle specific redirects if needed
+# /old-path    /new-path    301
+
+# Optional: Handle API routes if you have them
+# /api/*    https://your-api-domain.com/api/:splat    200
+
+# Optional: Handle static assets with proper caching
+# /assets/*    /assets/:splat    200
