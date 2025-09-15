@@ -139,7 +139,7 @@ export default function Home() {
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
-                {process.env.NODE_ENV === "development" && (
+                {import.meta.env.VITE_SHOW_AI_FEATURES === "true" && (
                   <Button
                     variant="outline"
                     size="lg"
@@ -353,7 +353,7 @@ export default function Home() {
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
-                {process.env.NODE_ENV === "development" && (
+                {import.meta.env.VITE_SHOW_AI_FEATURES === "true" && (
                   <Button
                     variant="outline"
                     size="lg"

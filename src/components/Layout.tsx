@@ -117,7 +117,7 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
                   </div>
                 </div>
               ) : (
-                process.env.NODE_ENV === "development" && (
+                import.meta.env.VITE_SHOW_AI_FEATURES === "true" && (
                   <Button
                     variant="default"
                     size="sm"
@@ -212,7 +212,7 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
                       </Button>
                     </div>
                   ) : (
-                    process.env.NODE_ENV === "development" && (
+                    import.meta.env.VITE_SHOW_AI_FEATURES === "true" && (
                       <Button
                         variant="default"
                         size="sm"

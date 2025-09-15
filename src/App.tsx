@@ -95,7 +95,7 @@ function App() {
                     </Layout>
                   }
                 />
-                {process.env.NODE_ENV === "development" && (
+                {import.meta.env.VITE_SHOW_AI_FEATURES === "true" && (
                   <Route
                     path="/agent/:sessionId?"
                     element={
