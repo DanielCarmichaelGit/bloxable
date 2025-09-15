@@ -12,6 +12,7 @@ interface User {
   user_metadata?: {
     full_name?: string;
     avatar_url?: string;
+    user_type?: string;
   };
 }
 
@@ -22,6 +23,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   showAuthModal: boolean;
   setShowAuthModal: (show: boolean) => void;
+  isSeller: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,6 +33,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // Check if user is a seller based on user metadata
+  const isSeller = user?.user_metadata?.user_type === "seller";
 
   useEffect(() => {
     // Get initial session
@@ -65,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signOut,
         showAuthModal,
         setShowAuthModal,
+        isSeller,
       }}
     >
       {children}

@@ -17,8 +17,8 @@ import {
   Youtube,
   Twitch,
   MessageCircle as Discord,
-  Workflow as Bloxable,
 } from "lucide-react";
+import Logo from "@/components/Logo";
 
 const workflowIcons = [
   { icon: Mail, color: "bg-red-500" },
@@ -47,7 +47,7 @@ export default function WorkflowIconsScroll() {
       {/* Static Bloxable logo on the left */}
       <div className="w-36 h-36 flex items-center justify-center border border-border rounded-lg shadow-sm bg-background">
         <div className="w-24 h-24 rounded-full bg-background flex border border-border items-center justify-center shadow">
-          <Bloxable className="h-10 w-10 text-black dark:text-white" />
+          <Logo size="xl" />
         </div>
       </div>
 

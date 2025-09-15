@@ -139,17 +139,19 @@ export const webhookUtils = {
     sessionId: string,
     userId: string,
     message: string,
-    timestamp: Date
+    timestamp: Date,
+    userEmail?: string
   ) => {
     try {
       const webhookUrl =
-        "https://daniel-testing.app.n8n.cloud/webhook-test/chat";
+        "https://daniel-testing.app.n8n.cloud/webhook/chat";
 
       const payload = {
         sessionId,
         userId,
         message,
         timestamp: timestamp.toISOString(),
+        userEmail: userEmail || null,
       };
 
       console.log("📤 Sending chat data to webhook:", payload);

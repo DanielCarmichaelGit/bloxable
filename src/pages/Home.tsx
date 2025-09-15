@@ -139,17 +139,19 @@ export default function Home() {
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="h-12 px-8"
-                  asChild
-                >
-                  <Link to="/agent">
-                    <MessageCircle className="mr-2 h-4 w-4" />
-                    Build Agent with AI
-                  </Link>
-                </Button>
+                {import.meta.env.DEV && (
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="h-12 px-8"
+                    asChild
+                  >
+                    <Link to="/agent">
+                      <MessageCircle className="mr-2 h-4 w-4" />
+                      Build Agent with AI
+                    </Link>
+                  </Button>
+                )}
               </div>
             </motion.div>
           </div>
@@ -351,17 +353,19 @@ export default function Home() {
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="h-12 px-8"
-                  asChild
-                >
-                  <Link to="/agent">
-                    <MessageCircle className="mr-2 h-4 w-4" />
-                    Build Agent with AI
-                  </Link>
-                </Button>
+                {import.meta.env.DEV && (
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="h-12 px-8"
+                    asChild
+                  >
+                    <Link to="/agent">
+                      <MessageCircle className="mr-2 h-4 w-4" />
+                      Build Agent with AI
+                    </Link>
+                  </Button>
+                )}
               </div>
             </motion.div>
           </div>

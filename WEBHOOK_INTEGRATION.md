@@ -17,7 +17,8 @@ Every user message is sent to the webhook with the following structure:
   "user_id": "uuid-string",
   "session_id": "uuid-string",
   "message": "user's message content",
-  "timestamp": "2024-01-15T10:30:00.000Z"
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "userEmail": "user@example.com"
 }
 ```
 
@@ -27,6 +28,7 @@ Every user message is sent to the webhook with the following structure:
 - **`session_id`**: The Supabase chat session ID (matches `chat_sessions.id`)
 - **`message`**: The actual message content from the user
 - **`timestamp`**: ISO 8601 timestamp of when the message was sent
+- **`userEmail`**: The email address of the user sending the message (null if not available)
 
 ## Integration Flow
 
