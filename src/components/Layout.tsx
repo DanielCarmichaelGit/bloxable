@@ -117,7 +117,7 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
                   </div>
                 </div>
               ) : (
-                import.meta.env.DEV && (
+                process.env.NODE_ENV === "development" && (
                   <Button
                     variant="default"
                     size="sm"
@@ -212,7 +212,7 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
                       </Button>
                     </div>
                   ) : (
-                    import.meta.env.DEV && (
+                    process.env.NODE_ENV === "development" && (
                       <Button
                         variant="default"
                         size="sm"

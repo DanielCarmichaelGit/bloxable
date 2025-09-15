@@ -139,7 +139,7 @@ export default function Home() {
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
-                {import.meta.env.DEV && (
+                {process.env.NODE_ENV === "development" && (
                   <Button
                     variant="outline"
                     size="lg"
@@ -353,7 +353,7 @@ export default function Home() {
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
                 </Button>
-                {import.meta.env.DEV && (
+                {process.env.NODE_ENV === "development" && (
                   <Button
                     variant="outline"
                     size="lg"

@@ -95,7 +95,7 @@ function App() {
                     </Layout>
                   }
                 />
-                {import.meta.env.DEV && (
+                {process.env.NODE_ENV === "development" && (
                   <Route
                     path="/agent/:sessionId?"
                     element={
