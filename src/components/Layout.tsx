@@ -1,5 +1,5 @@
 import { ReactNode, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Moon,
@@ -28,9 +28,10 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
   const { theme, setTheme } = useTheme();
   const { user, signOut } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Conditional navigation based on auth state
+  // Simple navigation based on auth state
   const navigation = user
     ? [
         { name: "Dashboard", href: "/dashboard", icon: Monitor },
@@ -40,6 +41,12 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
         { name: "Home", href: "/", icon: Home },
         { name: "Marketplace", href: "/marketplace", icon: Store },
       ];
+
+  // Handle sign out with redirect to home
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -107,7 +114,7 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
 
                       {/* Sign Out Option */}
                       <button
-                        onClick={signOut}
+                        onClick={handleSignOut}
                         className="flex items-center space-x-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors w-full text-left"
                       >
                         <LogOut className="h-4 w-4" />
@@ -202,7 +209,7 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          signOut();
+                          handleSignOut();
                           setIsMobileMenuOpen(false);
                         }}
                         className="w-full justify-start"

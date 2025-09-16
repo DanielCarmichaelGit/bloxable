@@ -1,15 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Link, useNavigate } from "react-router-dom";
-import {
-  Eye,
-  EyeOff,
-  ArrowLeft,
-  CheckCircle,
-  Star,
-  Users,
-  DollarSign,
-} from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Eye, EyeOff, ArrowLeft, CheckCircle, User, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,10 +12,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { supabase } from "@/lib/supabase";
+import { supabase, getAuthRedirectUrl } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 import Logo from "@/components/Logo";
 
-export default function SellerAuth() {
+export default function Auth() {
+  const { createProfile } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -35,6 +29,9 @@ export default function SellerAuth() {
   });
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get("redirect") || "/dashboard";
+  const userType = searchParams.get("type") || "buyer"; // buyer or seller
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -56,8 +53,12 @@ export default function SellerAuth() {
 
         if (error) throw error;
 
-        // Redirect to seller dashboard
-        navigate("/seller/dashboard");
+        // Redirect based on user type or default dashboard
+        if (userType === "seller") {
+          navigate("/seller/dashboard");
+        } else {
+          navigate("/dashboard");
+        }
       } else {
         // Sign up
         if (formData.password !== formData.confirmPassword) {
@@ -70,19 +71,31 @@ export default function SellerAuth() {
           options: {
             data: {
               full_name: formData.fullName,
-              user_type: "seller", // Tag the user as a seller
             },
+            emailRedirectTo: `${getAuthRedirectUrl()}?redirect=${encodeURIComponent(
+              redirectTo
+            )}`,
           },
         });
 
         if (error) throw error;
 
-        if (data.user && !data.user.email_confirmed_at) {
-          setError(
-            "Please check your email and click the confirmation link to complete your registration."
-          );
-        } else {
-          navigate("/seller/dashboard");
+        if (data.user) {
+          if (!data.user.email_confirmed_at) {
+            // Show success message for email confirmation
+            setError("success");
+            // Both profiles will be created after email confirmation
+          } else {
+            // Create both profiles immediately if email is already confirmed
+            await createBothProfiles(formData.fullName);
+
+            // Redirect based on user type
+            if (userType === "seller") {
+              navigate("/seller/dashboard");
+            } else {
+              navigate("/dashboard");
+            }
+          }
         }
       }
     } catch (error: any) {
@@ -92,32 +105,98 @@ export default function SellerAuth() {
     }
   };
 
-  const sellerBenefits = [
-    {
-      icon: DollarSign,
-      title: "Earn 80% Revenue Share",
-      description: "Keep 80% of every sale you make",
-    },
-    {
-      icon: Users,
-      title: "Global Marketplace",
-      description: "Reach customers worldwide",
-    },
-    {
-      icon: Star,
-      title: "Top Seller Support",
-      description: "Dedicated support for sellers",
-    },
-  ];
+  const createBothProfiles = async (fullName: string) => {
+    try {
+      // Create buyer profile
+      await createProfile("buyer", fullName, {
+        preferences: {},
+      });
+
+      // Create seller profile
+      await createProfile("seller", fullName, {
+        company_name: "",
+      });
+
+      console.log("Both buyer and seller profiles created successfully");
+    } catch (error) {
+      console.error("Error creating profiles:", error);
+      throw new Error(
+        "Failed to create user profiles. Please contact support."
+      );
+    }
+  };
+
+  const getPageTitle = () => {
+    if (isLogin) {
+      return userType === "seller" ? "Welcome Back, Seller" : "Welcome Back";
+    }
+    return userType === "seller" ? "Join as a Seller" : "Create Your Account";
+  };
+
+  const getPageDescription = () => {
+    if (isLogin) {
+      return userType === "seller"
+        ? "Sign in to access your seller dashboard"
+        : "Sign in to access your workflows";
+    }
+    return userType === "seller"
+      ? "Create your account and start selling workflows"
+      : "Create your account and start automating";
+  };
+
+  const getBenefits = () => {
+    if (userType === "seller") {
+      return [
+        {
+          icon: CheckCircle,
+          title: "Low Commission Rates",
+          description:
+            "Only 3% on one-time purchases, 1% on recurring subscriptions",
+        },
+        {
+          icon: Store,
+          title: "Global Marketplace",
+          description:
+            "Reach customers worldwide with your automation workflows",
+        },
+        {
+          icon: CheckCircle,
+          title: "Complete Dashboard",
+          description: "Track sales, manage workflows, and view analytics",
+        },
+      ];
+    } else {
+      return [
+        {
+          icon: CheckCircle,
+          title: "One-Click Setup",
+          description:
+            "Deploy workflows instantly with our simple setup process",
+        },
+        {
+          icon: User,
+          title: "Community Support",
+          description:
+            "Get help from our active community and expert support team",
+        },
+        {
+          icon: CheckCircle,
+          title: "Proven Workflows",
+          description:
+            "Access tested and verified automation workflows from experts",
+        },
+      ];
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-slate-800 dark:to-indigo-900">
+    <div className="min-h-screen bg-background">
       {/* Back Button */}
       <div className="absolute top-6 left-6 z-10">
         <Button variant="ghost" asChild>
-          <Link to="/seller">
+          <Link to={userType === "seller" ? "/seller" : "/"}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Seller Info
+            Back to {userType === "seller" ? "Seller Info" : "Home"}
           </Link>
         </Button>
       </div>
@@ -126,34 +205,20 @@ export default function SellerAuth() {
         {/* Left Side - Auth Form */}
         <div className="flex-1 flex items-center justify-center p-8">
           <motion.div
-            initial={{ opacity: 0, x: -50 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
             className="w-full max-w-md"
           >
             <div className="text-center mb-8">
               <Logo size="lg" className="mx-auto mb-4" />
               <h1 className="text-3xl font-bold text-foreground mb-2">
-                {isLogin ? "Welcome Back" : "Join as a Seller"}
+                {getPageTitle()}
               </h1>
-              <p className="text-muted-foreground">
-                {isLogin
-                  ? "Sign in to your seller account"
-                  : "Create your seller account and start earning"}
-              </p>
+              <p className="text-muted-foreground">{getPageDescription()}</p>
             </div>
 
-            <Card className="border-0 shadow-xl">
-              <CardHeader>
-                <CardTitle className="text-center">
-                  {isLogin ? "Sign In" : "Create Account"}
-                </CardTitle>
-                <CardDescription className="text-center">
-                  {isLogin
-                    ? "Enter your credentials to access your dashboard"
-                    : "Fill in your details to get started"}
-                </CardDescription>
-              </CardHeader>
+            <Card className="border-0 shadow-sm">
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {!isLogin && (
@@ -232,8 +297,16 @@ export default function SellerAuth() {
                   )}
 
                   {error && (
-                    <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 p-3 rounded-md">
-                      {error}
+                    <div
+                      className={`text-sm p-3 rounded-md ${
+                        error === "success"
+                          ? "text-green-600 bg-green-50 dark:bg-green-900/20"
+                          : "text-red-600 bg-red-50 dark:bg-red-900/20"
+                      }`}
+                    >
+                      {error === "success"
+                        ? "Please check your email and click the confirmation link to complete your registration."
+                        : error}
                     </div>
                   )}
 
@@ -278,55 +351,67 @@ export default function SellerAuth() {
         </div>
 
         {/* Right Side - Benefits */}
-        <div className="hidden lg:flex flex-1 bg-gradient-to-br from-blue-600 to-purple-600 p-12 items-center">
+        <div className="hidden lg:flex flex-1 bg-muted/20 p-12 items-center">
           <motion.div
-            initial={{ opacity: 0, x: 50 }}
+            initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="text-white max-w-lg"
+            className="max-w-lg"
           >
-            <h2 className="text-4xl font-bold mb-6">
-              Start Your Journey as a Seller
+            <h2 className="text-3xl font-bold text-foreground mb-6">
+              {userType === "seller"
+                ? "Start Your Journey as a Seller"
+                : "Start Automating Today"}
             </h2>
-            <p className="text-xl mb-8 opacity-90">
-              Join thousands of successful sellers who are already earning from
-              their automation expertise.
+            <p className="text-lg text-muted-foreground mb-8">
+              {userType === "seller"
+                ? "Join thousands of successful sellers who are already earning from their automation expertise."
+                : "Join thousands of users who are already saving time and increasing productivity with our automation workflows."}
             </p>
 
             <div className="space-y-6">
-              {sellerBenefits.map((benefit, index) => (
-                <motion.div
-                  key={benefit.title}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.6, delay: 0.4 + index * 0.1 }}
-                  className="flex items-start space-x-4"
-                >
+              {getBenefits().map((benefit, index) => (
+                <div key={index} className="flex items-start space-x-4">
                   <div className="flex-shrink-0">
-                    <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                      <benefit.icon className="h-6 w-6" />
+                    <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
+                      <benefit.icon className="h-4 w-4 text-primary" />
                     </div>
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold mb-1">
+                    <h3 className="text-lg font-semibold text-foreground mb-1">
                       {benefit.title}
                     </h3>
-                    <p className="opacity-90">{benefit.description}</p>
+                    <p className="text-muted-foreground">
+                      {benefit.description}
+                    </p>
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
 
-            <div className="mt-12 p-6 bg-white/10 rounded-lg backdrop-blur-sm">
+            <div className="mt-12 p-6 bg-muted/50 rounded-lg">
               <div className="flex items-center space-x-3 mb-3">
-                <CheckCircle className="h-5 w-5" />
-                <span className="font-semibold">What happens next?</span>
+                <CheckCircle className="h-5 w-5 text-primary" />
+                <span className="font-semibold text-foreground">
+                  What happens next?
+                </span>
               </div>
-              <ul className="text-sm space-y-2 opacity-90">
-                <li>• Complete your seller profile</li>
-                <li>• Create your first workflow</li>
-                <li>• Start earning from day one</li>
-                <li>• Access seller tools and analytics</li>
+              <ul className="text-sm space-y-2 text-muted-foreground">
+                {userType === "seller" ? (
+                  <>
+                    <li>• Complete your seller profile</li>
+                    <li>• Create your first workflow</li>
+                    <li>• Start earning from day one</li>
+                    <li>• Access seller tools and analytics</li>
+                  </>
+                ) : (
+                  <>
+                    <li>• Browse our marketplace of workflows</li>
+                    <li>• Purchase and deploy instantly</li>
+                    <li>• Start saving time immediately</li>
+                    <li>• Access your personal dashboard</li>
+                  </>
+                )}
               </ul>
             </div>
           </motion.div>

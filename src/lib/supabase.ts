@@ -3,7 +3,31 @@ import { createClient } from "@supabase/supabase-js";
 const supabaseUrl = "https://nzbbzzenziwwxoiisjoz.supabase.co";
 const supabaseAnonKey = "sb_publishable_pXQbw4-W9-JNpB0jbtfyxA_GVkmycmU";
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Get the base URL for redirects
+const getBaseUrl = () => {
+  if (typeof window !== "undefined") {
+    return window.location.origin;
+  }
+  // Fallback for SSR
+  return process.env.NODE_ENV === "production"
+    ? "https://bloxable.io"
+    : "http://localhost:5174";
+};
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+    // Remove PKCE flow for email confirmations - they use simple code exchange
+    // flowType: "pkce", // Commented out for email confirmations
+    // Ensure proper handling of email confirmations
+    storage: typeof window !== "undefined" ? window.localStorage : undefined,
+  },
+});
+
+// Export the base URL for use in auth flows
+export const getAuthRedirectUrl = () => `${getBaseUrl()}/auth/callback`;
 
 // Database types
 export interface Agent {
@@ -15,6 +39,32 @@ export interface Agent {
   config: Record<string, any>;
   created_at: string;
   updated_at: string;
+}
+
+export interface MarketplaceItem {
+  id: string;
+  seller_id: string;
+  name: string;
+  description: string;
+  price: number;
+  is_free: boolean;
+  billing_period: "one_time" | "monthly" | "yearly" | "lifetime";
+  source_code_price?: number;
+  source_code_format?: "json" | "provided_in_chat" | "url";
+  source_code_url?: string;
+  rating: number;
+  setup_time?: string;
+  tags: string[];
+  demo_link?: string;
+  stripe_product_id?: string;
+  stripe_price_id?: string;
+  stripe_customer_id?: string;
+  status: "draft" | "pending_review" | "active" | "inactive" | "rejected";
+  is_public: boolean;
+  created_at: string;
+  updated_at: string;
+  published_at?: string;
+  metadata: Record<string, any>;
 }
 
 export interface ChatSession {
@@ -297,6 +347,244 @@ export const chatApi = {
     } catch (error) {
       console.error("Error deleting session:", error);
       return false;
+    }
+  },
+};
+
+// Marketplace Items API functions
+export const marketplaceApi = {
+  // Create a new marketplace item
+  async createItem(
+    sellerId: string,
+    itemData: Omit<
+      MarketplaceItem,
+      | "id"
+      | "seller_id"
+      | "is_free"
+      | "rating"
+      | "status"
+      | "is_public"
+      | "created_at"
+      | "updated_at"
+      | "published_at"
+      | "metadata"
+    >
+  ): Promise<MarketplaceItem | null> {
+    try {
+      const { data, error } = await supabase
+        .from("marketplace_items")
+        .insert({
+          seller_id: sellerId,
+          ...itemData,
+          metadata: {},
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error creating marketplace item:", error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error("Error creating marketplace item:", error);
+      return null;
+    }
+  },
+
+  // Get all marketplace items (public active items)
+  async getPublicItems(): Promise<MarketplaceItem[]> {
+    try {
+      const { data, error } = await supabase
+        .from("marketplace_items")
+        .select("*")
+        .eq("is_public", true)
+        .eq("status", "active")
+        .order("published_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching public marketplace items:", error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error("Error fetching public marketplace items:", error);
+      return [];
+    }
+  },
+
+  // Get marketplace items by seller
+  async getItemsBySeller(sellerId: string): Promise<MarketplaceItem[]> {
+    try {
+      const { data, error } = await supabase
+        .from("marketplace_items")
+        .select("*")
+        .eq("seller_id", sellerId)
+        .order("updated_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching seller marketplace items:", error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error("Error fetching seller marketplace items:", error);
+      return [];
+    }
+  },
+
+  // Get marketplace item by ID
+  async getItemById(itemId: string): Promise<MarketplaceItem | null> {
+    try {
+      const { data, error } = await supabase
+        .from("marketplace_items")
+        .select("*")
+        .eq("id", itemId)
+        .single();
+
+      if (error) {
+        console.error("Error fetching marketplace item:", error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error("Error fetching marketplace item:", error);
+      return null;
+    }
+  },
+
+  // Update marketplace item
+  async updateItem(
+    itemId: string,
+    updates: Partial<
+      Omit<
+        MarketplaceItem,
+        | "id"
+        | "seller_id"
+        | "is_free"
+        | "created_at"
+        | "updated_at"
+        | "published_at"
+      >
+    >
+  ): Promise<MarketplaceItem | null> {
+    try {
+      const { data, error } = await supabase
+        .from("marketplace_items")
+        .update(updates)
+        .eq("id", itemId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error updating marketplace item:", error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error("Error updating marketplace item:", error);
+      return null;
+    }
+  },
+
+  // Delete marketplace item
+  async deleteItem(itemId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from("marketplace_items")
+        .delete()
+        .eq("id", itemId);
+
+      if (error) {
+        console.error("Error deleting marketplace item:", error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error deleting marketplace item:", error);
+      return false;
+    }
+  },
+
+  // Publish marketplace item
+  async publishItem(itemId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase.rpc("publish_marketplace_item", {
+        item_id: itemId,
+      });
+
+      if (error) {
+        console.error("Error publishing marketplace item:", error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error publishing marketplace item:", error);
+      return false;
+    }
+  },
+
+  // Unpublish marketplace item
+  async unpublishItem(itemId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase.rpc("unpublish_marketplace_item", {
+        item_id: itemId,
+      });
+
+      if (error) {
+        console.error("Error unpublishing marketplace item:", error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error unpublishing marketplace item:", error);
+      return false;
+    }
+  },
+
+  // Search marketplace items
+  async searchItems(
+    query: string,
+    tags?: string[]
+  ): Promise<MarketplaceItem[]> {
+    try {
+      let supabaseQuery = supabase
+        .from("marketplace_items")
+        .select("*")
+        .eq("is_public", true)
+        .eq("status", "active");
+
+      if (query) {
+        supabaseQuery = supabaseQuery.or(
+          `name.ilike.%${query}%,description.ilike.%${query}%`
+        );
+      }
+
+      if (tags && tags.length > 0) {
+        supabaseQuery = supabaseQuery.overlaps("tags", tags);
+      }
+
+      const { data, error } = await supabaseQuery.order("published_at", {
+        ascending: false,
+      });
+
+      if (error) {
+        console.error("Error searching marketplace items:", error);
+        return [];
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error("Error searching marketplace items:", error);
+      return [];
     }
   },
 };

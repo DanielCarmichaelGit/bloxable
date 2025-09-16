@@ -6,24 +6,20 @@ const supabase = createClient(
   "sb_publishable_pXQbw4-W9-JNpB0jbtfyxA_GVkmycmU"
 );
 
-interface User {
+export interface User {
   id: string;
   email?: string;
   user_metadata?: {
     full_name?: string;
     avatar_url?: string;
-    user_type?: string;
   };
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
   session: any;
   loading: boolean;
   signOut: () => Promise<void>;
-  showAuthModal: boolean;
-  setShowAuthModal: (show: boolean) => void;
-  isSeller: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,10 +28,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-
-  // Check if user is a seller based on user metadata
-  const isSeller = user?.user_metadata?.user_type === "seller";
 
   useEffect(() => {
     // Get initial session
@@ -48,7 +40,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
@@ -59,6 +51,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    // Clear all user data
+    setUser(null);
+    setSession(null);
   };
 
   return (
@@ -68,9 +63,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         session,
         loading,
         signOut,
-        showAuthModal,
-        setShowAuthModal,
-        isSeller,
       }}
     >
       {children}

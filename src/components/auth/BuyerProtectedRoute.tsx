@@ -3,13 +3,13 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import RoleSwitcher from "./RoleSwitcher";
 
-interface SellerProtectedRouteProps {
+interface BuyerProtectedRouteProps {
   children: ReactNode;
 }
 
-export default function SellerProtectedRoute({
+export default function BuyerProtectedRoute({
   children,
-}: SellerProtectedRouteProps) {
+}: BuyerProtectedRouteProps) {
   const {
     user,
     loading,
@@ -22,39 +22,35 @@ export default function SellerProtectedRoute({
 
   useEffect(() => {
     const handleProfileCreation = async () => {
-      if (
-        !user ||
-        !currentProfile ||
-        currentProfile.profile_type === "seller"
-      ) {
+      if (!user || !currentProfile || currentProfile.profile_type === "buyer") {
         return;
       }
 
-      const hasSellerProfile = availableProfiles.some(
-        (p) => p.profile_type === "seller"
+      const hasBuyerProfile = availableProfiles.some(
+        (p) => p.profile_type === "buyer"
       );
 
-      if (!hasSellerProfile && !isCreatingProfile) {
+      if (!hasBuyerProfile && !isCreatingProfile) {
         setIsCreatingProfile(true);
         try {
           const success = await createProfile(
-            "seller",
+            "buyer",
             user.user_metadata?.full_name,
             {
-              company_name: "",
+              preferences: {},
             }
           );
           if (success) {
             // Profile created successfully
           }
         } catch (error) {
-          console.error("Error creating seller profile:", error);
+          console.error("Error creating buyer profile:", error);
         } finally {
           setIsCreatingProfile(false);
         }
-      } else if (hasSellerProfile) {
-        // Switch to existing seller profile
-        await switchProfile("seller");
+      } else if (hasBuyerProfile) {
+        // Switch to existing buyer profile
+        await switchProfile("buyer");
       }
     };
 
@@ -74,7 +70,7 @@ export default function SellerProtectedRoute({
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p className="text-muted-foreground">
-            {isCreatingProfile ? "Setting up seller profile..." : "Loading..."}
+            {isCreatingProfile ? "Setting up buyer profile..." : "Loading..."}
           </p>
         </div>
       </div>
@@ -82,13 +78,13 @@ export default function SellerProtectedRoute({
   }
 
   if (!user) {
-    return <Navigate to="/seller/auth" replace />;
+    return <Navigate to="/auth" replace />;
   }
 
-  // If user doesn't have a seller profile, show role switcher
-  if (!currentProfile || currentProfile.profile_type !== "seller") {
-    const hasSellerProfile = availableProfiles.some(
-      (p) => p.profile_type === "seller"
+  // If user doesn't have a buyer profile, show role switcher
+  if (!currentProfile || currentProfile.profile_type !== "buyer") {
+    const hasBuyerProfile = availableProfiles.some(
+      (p) => p.profile_type === "buyer"
     );
 
     return (
@@ -96,19 +92,19 @@ export default function SellerProtectedRoute({
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-md mx-auto text-center">
             <h1 className="text-2xl font-bold text-foreground mb-4">
-              {hasSellerProfile
-                ? "Switch to Seller Mode"
-                : "Create Seller Profile"}
+              {hasBuyerProfile
+                ? "Switch to Buyer Mode"
+                : "Create Buyer Profile"}
             </h1>
             <p className="text-muted-foreground mb-6">
-              {hasSellerProfile
-                ? "You already have a seller profile. Switch to it to access seller features."
-                : "Create a seller profile to start selling workflows and earning money."}
+              {hasBuyerProfile
+                ? "You already have a buyer profile. Switch to it to access buyer features."
+                : "Create a buyer profile to start buying and using automation workflows."}
             </p>
             <div className="space-y-4">
               <RoleSwitcher
                 onRoleChange={(role) => {
-                  if (role === "seller") {
+                  if (role === "buyer") {
                     window.location.reload(); // Refresh to update the route
                   }
                 }}

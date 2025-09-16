@@ -201,9 +201,9 @@ export default function SellerDashboardNew() {
                 </Link>
               </Button>
               <Button asChild>
-                <Link to="/seller/workflows/new">
+                <Link to="/seller/create-listing">
                   <Plus className="h-4 w-4 mr-2" />
-                  Create Workflow
+                  Create Listing
                 </Link>
               </Button>
             </div>

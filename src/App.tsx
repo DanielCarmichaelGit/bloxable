@@ -12,11 +12,14 @@ import Marketplace from "@/pages/Marketplace";
 import Workflow from "@/pages/Workflow";
 import SellerDashboard from "@/pages/SellerDashboard";
 import SellerInfo from "@/pages/SellerInfo";
-import SellerAuth from "@/pages/SellerAuth";
+import Auth from "@/pages/Auth";
 import SellerDashboardNew from "@/pages/SellerDashboardNew";
-import SellerProtectedRoute from "@/components/auth/SellerProtectedRoute";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import AgentBuilder from "@/pages/AgentBuilder";
 import Settings from "@/pages/Settings";
+import AuthCallback from "@/pages/AuthCallback";
+import AuthTest from "@/pages/AuthTest";
+import MarketplaceListingWizard from "@/pages/MarketplaceListingWizard";
 
 function App() {
   return (
@@ -34,12 +37,17 @@ function App() {
                     </Layout>
                   }
                 />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/auth/callback" element={<AuthCallback />} />
+                <Route path="/auth/test" element={<AuthTest />} />
                 <Route
                   path="/dashboard"
                   element={
-                    <Layout>
-                      <Dashboard />
-                    </Layout>
+                    <ProtectedRoute>
+                      <Layout>
+                        <Dashboard />
+                      </Layout>
+                    </ProtectedRoute>
                   }
                 />
                 <Route
@@ -66,25 +74,33 @@ function App() {
                     </Layout>
                   }
                 />
-                <Route path="/seller/auth" element={<SellerAuth />} />
+                <Route path="/seller/auth" element={<Auth />} />
                 <Route
                   path="/seller/dashboard"
                   element={
-                    <SellerProtectedRoute>
+                    <ProtectedRoute>
                       <Layout>
                         <SellerDashboardNew />
                       </Layout>
-                    </SellerProtectedRoute>
+                    </ProtectedRoute>
                   }
                 />
                 <Route
                   path="/seller/workflows"
                   element={
-                    <SellerProtectedRoute>
+                    <ProtectedRoute>
                       <Layout>
                         <SellerDashboard />
                       </Layout>
-                    </SellerProtectedRoute>
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/seller/create-listing"
+                  element={
+                    <ProtectedRoute>
+                      <MarketplaceListingWizard />
+                    </ProtectedRoute>
                   }
                 />
                 <Route

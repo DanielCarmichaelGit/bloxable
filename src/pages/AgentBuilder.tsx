@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
-import AuthModal from "@/components/auth/AuthModal";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
   setCurrentSession,
@@ -48,7 +47,7 @@ interface WebhookResponse {
 }
 
 export default function AgentBuilder() {
-  const { user, showAuthModal, setShowAuthModal } = useAuth();
+  const { user } = useAuth();
   const { sessionId } = useParams<{ sessionId?: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
@@ -309,7 +308,12 @@ export default function AgentBuilder() {
     if (!inputMessage.trim() || !currentSession) return;
 
     if (!user) {
-      setShowAuthModal(true);
+      // Redirect to buyer auth page with current page as redirect
+      navigate(
+        `/auth?redirect=${encodeURIComponent(
+          `/agent-builder${sessionId ? `/${sessionId}` : ""}`
+        )}`
+      );
       return;
     }
 
@@ -964,14 +968,6 @@ export default function AgentBuilder() {
           </motion.div>
         </div>
       </motion.div>
-
-      {/* Auth Modal */}
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        title="Sign In to Build Agents"
-        description="Please sign in to create and manage your AI agents."
-      />
     </div>
   );
 }
