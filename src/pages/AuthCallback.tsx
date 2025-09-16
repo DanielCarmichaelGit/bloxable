@@ -194,6 +194,54 @@ export default function AuthCallback() {
           }
         }
 
+        // Handle account switching based on localStorage
+        console.log("AuthCallback: Handling account switching...");
+
+        // Check localStorage for last account type
+        const lastAccountType = localStorage.getItem("lastAccountType");
+        console.log(
+          "AuthCallback: Last account type from localStorage:",
+          lastAccountType
+        );
+
+        // Determine which account type to switch to
+        let targetAccountType = "buyer"; // Default to buyer for fresh accounts
+
+        if (
+          lastAccountType &&
+          (lastAccountType === "buyer" || lastAccountType === "seller")
+        ) {
+          targetAccountType = lastAccountType;
+        }
+
+        console.log(
+          "AuthCallback: Switching user to account type:",
+          targetAccountType
+        );
+
+        // Switch the user to the target account type
+        const { error: switchError } = await supabase.rpc(
+          "switch_user_profile",
+          {
+            user_uuid: session.user.id,
+            new_profile_type: targetAccountType,
+          }
+        );
+
+        if (switchError) {
+          console.error(
+            "AuthCallback: Error switching user profile:",
+            switchError
+          );
+        } else {
+          console.log(
+            "AuthCallback: Successfully switched user to:",
+            targetAccountType
+          );
+          // Update localStorage to persist the choice
+          localStorage.setItem("lastAccountType", targetAccountType);
+        }
+
         // Check URL params to determine redirect destination
         const urlParams = new URLSearchParams(window.location.search);
         const hashParams = new URLSearchParams(

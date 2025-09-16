@@ -1,6 +1,7 @@
 import { ReactNode, useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAccount } from "@/contexts/AccountProvider";
 import RoleSwitcher from "./RoleSwitcher";
 
 interface BuyerProtectedRouteProps {
@@ -10,14 +11,9 @@ interface BuyerProtectedRouteProps {
 export default function BuyerProtectedRoute({
   children,
 }: BuyerProtectedRouteProps) {
-  const {
-    user,
-    loading,
-    currentProfile,
-    availableProfiles,
-    createProfile,
-    switchProfile,
-  } = useAuth();
+  const { user, loading } = useAuth();
+  const { currentProfile, availableProfiles, switchProfile, createProfile } =
+    useAccount();
   const [isCreatingProfile, setIsCreatingProfile] = useState(false);
 
   useEffect(() => {

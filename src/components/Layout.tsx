@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from "@/contexts/AuthContext";
 import Logo from "@/components/Logo";
+import AccountSwitcher from "@/components/AccountSwitcher";
 
 interface LayoutProps {
   children: ReactNode;
@@ -58,7 +59,7 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
             <Link to="/" className="flex items-center space-x-2">
               <Logo size="lg" />
               <span className="text-xl font-bold text-foreground">
-                Bloxable.ai
+                Bloxable.io
               </span>
             </Link>
 
@@ -86,43 +87,48 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
             {/* User Menu */}
             <div className="flex items-center space-x-4">
               {user ? (
-                <div className="relative group">
-                  {/* User Dropdown Trigger */}
-                  <button className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
-                    <Settings className="h-4 w-4" />
-                    <ChevronDown className="h-3 w-3" />
-                  </button>
+                <>
+                  {/* Account Switcher */}
+                  <AccountSwitcher />
 
-                  {/* Dropdown Menu */}
-                  <div className="absolute right-0 mt-2 w-56 bg-background border border-border rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                    <div className="py-1">
-                      {/* User Email */}
-                      <div className="px-4 py-2 border-b border-border">
-                        <p className="text-sm text-muted-foreground">
-                          {user.email}
-                        </p>
+                  <div className="relative group">
+                    {/* User Dropdown Trigger */}
+                    <button className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+                      <Settings className="h-4 w-4" />
+                      <ChevronDown className="h-3 w-3" />
+                    </button>
+
+                    {/* Dropdown Menu */}
+                    <div className="absolute right-0 mt-2 w-56 bg-background border border-border rounded-md shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                      <div className="py-1">
+                        {/* User Email */}
+                        <div className="px-4 py-2 border-b border-border">
+                          <p className="text-sm text-muted-foreground">
+                            {user.email}
+                          </p>
+                        </div>
+
+                        {/* Settings Option */}
+                        <Link
+                          to="/settings"
+                          className="flex items-center space-x-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                        >
+                          <Settings className="h-4 w-4" />
+                          <span>Settings</span>
+                        </Link>
+
+                        {/* Sign Out Option */}
+                        <button
+                          onClick={handleSignOut}
+                          className="flex items-center space-x-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors w-full text-left"
+                        >
+                          <LogOut className="h-4 w-4" />
+                          <span>Sign Out</span>
+                        </button>
                       </div>
-
-                      {/* Settings Option */}
-                      <Link
-                        to="/settings"
-                        className="flex items-center space-x-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-                      >
-                        <Settings className="h-4 w-4" />
-                        <span>Settings</span>
-                      </Link>
-
-                      {/* Sign Out Option */}
-                      <button
-                        onClick={handleSignOut}
-                        className="flex items-center space-x-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors w-full text-left"
-                      >
-                        <LogOut className="h-4 w-4" />
-                        <span>Sign Out</span>
-                      </button>
                     </div>
                   </div>
-                </div>
+                </>
               ) : (
                 import.meta.env.VITE_SHOW_AI_FEATURES === "true" && (
                   <Button
@@ -187,6 +193,11 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
                   })}
                   {user ? (
                     <div className="mt-2 space-y-1">
+                      {/* Account Switcher */}
+                      <div className="px-3 py-2">
+                        <AccountSwitcher />
+                      </div>
+
                       {/* User Email */}
                       <div className="px-3 py-2 border-b border-border">
                         <p className="text-sm text-muted-foreground">
@@ -261,7 +272,7 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
               <div className="flex items-center space-x-2">
                 <Logo size="sm" />
                 <span className="text-sm text-muted-foreground">
-                  © 2024 Bloxable.ai. All rights reserved.
+                  © 2024 Bloxable.io. All rights reserved.
                 </span>
               </div>
               <div className="flex items-center space-x-6 text-sm text-muted-foreground">

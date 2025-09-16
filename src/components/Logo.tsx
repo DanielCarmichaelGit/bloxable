@@ -33,7 +33,7 @@ export default function Logo({ className = "", size = "md" }: LogoProps) {
   return (
     <img
       src={logoSrc}
-      alt="Bloxable.ai"
+      alt="Bloxable.io"
       className={`${sizeClass} ${className}`}
       style={{
         // For system theme, we'll use CSS to switch between logos
@@ -53,12 +53,12 @@ export function LogoWithCSS({ className = "", size = "md" }: LogoProps) {
     <div className={`${sizeClass} ${className} relative`}>
       <img
         src="/assets/bloxable-light-logo.svg"
-        alt="Bloxable.ai"
+        alt="Bloxable.io"
         className="block dark:hidden w-full h-full"
       />
       <img
         src="/assets/bloxable-dark-logo.svg"
-        alt="Bloxable.ai"
+        alt="Bloxable.io"
         className="hidden dark:block w-full h-full"
       />
     </div>

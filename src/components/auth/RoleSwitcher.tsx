@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAccount } from "@/contexts/AccountProvider";
 
 interface RoleSwitcherProps {
   onRoleChange?: (role: "seller" | "buyer") => void;
@@ -21,7 +21,7 @@ export default function RoleSwitcher({
   className = "",
 }: RoleSwitcherProps) {
   const { currentProfile, availableProfiles, switchProfile, createProfile } =
-    useAuth();
+    useAccount();
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 

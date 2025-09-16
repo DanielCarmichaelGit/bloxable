@@ -84,102 +84,37 @@ export interface ChatMessage {
   created_at: string;
 }
 
-// Agent API functions
+// Agent API functions - Mock implementation (agents table doesn't exist)
 export const agentApi = {
   // Create a new agent
   async createAgent(
-    userId: string,
-    name: string,
-    description?: string
+    _userId: string,
+    _name: string,
+    _description?: string
   ): Promise<Agent | null> {
-    try {
-      const { data, error } = await supabase
-        .from("agents")
-        .insert({
-          user_id: userId,
-          name,
-          description,
-          status: "active",
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Error creating agent:", error);
-        return null;
-      }
-
-      return data;
-    } catch (error) {
-      console.error("Error creating agent:", error);
-      return null;
-    }
+    console.log("Agent creation requested but agents table doesn't exist");
+    return null;
   },
 
   // Get all agents for a user
-  async getAgents(userId: string): Promise<Agent[]> {
-    try {
-      const { data, error } = await supabase
-        .from("agents")
-        .select("*")
-        .eq("user_id", userId)
-        .order("updated_at", { ascending: false });
-
-      if (error) {
-        console.error("Error fetching agents:", error);
-        return [];
-      }
-
-      return data || [];
-    } catch (error) {
-      console.error("Error fetching agents:", error);
-      return [];
-    }
+  async getAgents(_userId: string): Promise<Agent[]> {
+    console.log("Agent fetch requested but agents table doesn't exist");
+    return [];
   },
 
   // Update agent
   async updateAgent(
-    agentId: string,
-    updates: Partial<Agent>
+    _agentId: string,
+    _updates: Partial<Agent>
   ): Promise<Agent | null> {
-    try {
-      const { data, error } = await supabase
-        .from("agents")
-        .update(updates)
-        .eq("id", agentId)
-        .select()
-        .single();
-
-      if (error) {
-        console.error("Error updating agent:", error);
-        return null;
-      }
-
-      return data;
-    } catch (error) {
-      console.error("Error updating agent:", error);
-      return null;
-    }
+    console.log("Agent update requested but agents table doesn't exist");
+    return null;
   },
 
   // Delete agent
-  async deleteAgent(agentId: string): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from("agents")
-        .delete()
-        .eq("id", agentId);
-
-      if (error) {
-        console.error("Error deleting agent:", error);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error("Error deleting agent:", error);
-      return false;
-    }
+  async deleteAgent(_agentId: string): Promise<boolean> {
+    console.log("Agent deletion requested but agents table doesn't exist");
+    return false;
   },
 };
 

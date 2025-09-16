@@ -1,6 +1,7 @@
 import { ReactNode, useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAccount } from "@/contexts/AccountProvider";
 
 interface SimpleBuyerProtectedRouteProps {
   children: ReactNode;
@@ -9,8 +10,8 @@ interface SimpleBuyerProtectedRouteProps {
 export default function SimpleBuyerProtectedRoute({
   children,
 }: SimpleBuyerProtectedRouteProps) {
-  const { user, loading, currentProfile, availableProfiles, switchProfile } =
-    useAuth();
+  const { user, loading } = useAuth();
+  const { currentProfile, availableProfiles, switchProfile } = useAccount();
   const [hasAttemptedSwitch, setHasAttemptedSwitch] = useState(false);
 
   useEffect(() => {

@@ -1,6 +1,7 @@
 import { ReactNode, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAccount } from "@/contexts/AccountProvider";
 
 interface SimpleSellerProtectedRouteProps {
   children: ReactNode;
@@ -9,8 +10,8 @@ interface SimpleSellerProtectedRouteProps {
 export default function SimpleSellerProtectedRoute({
   children,
 }: SimpleSellerProtectedRouteProps) {
-  const { user, loading, currentProfile, availableProfiles, switchProfile } =
-    useAuth();
+  const { user, loading } = useAuth();
+  const { currentProfile, availableProfiles, switchProfile } = useAccount();
 
   useEffect(() => {
     // If user has profiles but not seller active, switch to seller

@@ -1,4 +1,4 @@
-// Mock API for Bloxable.ai - Workflow Automation Marketplace
+// Mock API for Bloxable.io - Workflow Automation Marketplace
 // This simulates Supabase Edge Functions calls
 
 export interface Workflow {

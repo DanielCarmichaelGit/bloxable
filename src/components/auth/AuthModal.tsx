@@ -12,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAccount } from "@/contexts/AccountProvider";
 import Logo from "@/components/Logo";
 
 interface AuthModalProps {
@@ -30,7 +30,7 @@ export default function AuthModal({
   defaultUserType = "buyer",
   onSuccess,
 }: AuthModalProps) {
-  const { createProfile } = useAuth();
+  const { createProfile } = useAccount();
   const [mode, setMode] = useState<"login" | "signup">(defaultMode);
   const [userType, setUserType] = useState<"seller" | "buyer">(defaultUserType);
   const [showPassword, setShowPassword] = useState(false);

@@ -2,6 +2,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Provider } from "react-redux";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { AccountProvider } from "@/contexts/AccountProvider";
 import { ChatProvider } from "@/contexts/ChatContext";
 import { store } from "@/store";
 import Layout from "@/components/Layout";
@@ -26,104 +27,106 @@ function App() {
     <Provider store={store}>
       <ThemeProvider defaultTheme="system" storageKey="bloxable-ui-theme">
         <AuthProvider>
-          <ChatProvider>
-            <Router>
-              <Routes>
-                <Route
-                  path="/"
-                  element={
-                    <Layout>
-                      <Home />
-                    </Layout>
-                  }
-                />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/auth/callback" element={<AuthCallback />} />
-                <Route path="/auth/test" element={<AuthTest />} />
-                <Route
-                  path="/dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <Layout>
-                        <Dashboard />
-                      </Layout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/marketplace"
-                  element={
-                    <Layout>
-                      <Marketplace />
-                    </Layout>
-                  }
-                />
-                <Route
-                  path="/workflow/:id"
-                  element={
-                    <Layout>
-                      <Workflow />
-                    </Layout>
-                  }
-                />
-                <Route
-                  path="/seller"
-                  element={
-                    <Layout>
-                      <SellerInfo />
-                    </Layout>
-                  }
-                />
-                <Route path="/seller/auth" element={<Auth />} />
-                <Route
-                  path="/seller/dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <Layout>
-                        <SellerDashboardNew />
-                      </Layout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/seller/workflows"
-                  element={
-                    <ProtectedRoute>
-                      <Layout>
-                        <SellerDashboard />
-                      </Layout>
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/seller/create-listing"
-                  element={
-                    <ProtectedRoute>
-                      <MarketplaceListingWizard />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/settings"
-                  element={
-                    <Layout>
-                      <Settings />
-                    </Layout>
-                  }
-                />
-                {import.meta.env.VITE_SHOW_AI_FEATURES === "true" && (
+          <AccountProvider>
+            <ChatProvider>
+              <Router>
+                <Routes>
                   <Route
-                    path="/agent/:sessionId?"
+                    path="/"
                     element={
-                      <AgentLayout>
-                        <AgentBuilder />
-                      </AgentLayout>
+                      <Layout>
+                        <Home />
+                      </Layout>
                     }
                   />
-                )}
-              </Routes>
-            </Router>
-          </ChatProvider>
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
+                  <Route path="/auth/test" element={<AuthTest />} />
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <ProtectedRoute>
+                        <Layout>
+                          <Dashboard />
+                        </Layout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/marketplace"
+                    element={
+                      <Layout>
+                        <Marketplace />
+                      </Layout>
+                    }
+                  />
+                  <Route
+                    path="/workflow/:id"
+                    element={
+                      <Layout>
+                        <Workflow />
+                      </Layout>
+                    }
+                  />
+                  <Route
+                    path="/seller"
+                    element={
+                      <Layout>
+                        <SellerInfo />
+                      </Layout>
+                    }
+                  />
+                  <Route path="/seller/auth" element={<Auth />} />
+                  <Route
+                    path="/seller/dashboard"
+                    element={
+                      <ProtectedRoute>
+                        <Layout>
+                          <SellerDashboardNew />
+                        </Layout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/seller/workflows"
+                    element={
+                      <ProtectedRoute>
+                        <Layout>
+                          <SellerDashboard />
+                        </Layout>
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/seller/create-listing"
+                    element={
+                      <ProtectedRoute>
+                        <MarketplaceListingWizard />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/settings"
+                    element={
+                      <Layout>
+                        <Settings />
+                      </Layout>
+                    }
+                  />
+                  {import.meta.env.VITE_SHOW_AI_FEATURES === "true" && (
+                    <Route
+                      path="/agent/:sessionId?"
+                      element={
+                        <AgentLayout>
+                          <AgentBuilder />
+                        </AgentLayout>
+                      }
+                    />
+                  )}
+                </Routes>
+              </Router>
+            </ChatProvider>
+          </AccountProvider>
         </AuthProvider>
       </ThemeProvider>
     </Provider>
