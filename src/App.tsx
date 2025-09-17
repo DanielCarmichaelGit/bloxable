@@ -8,7 +8,7 @@ import { store } from "@/store";
 import Layout from "@/components/Layout";
 import AgentLayout from "@/components/AgentLayout";
 import Home from "@/pages/Home";
-import Dashboard from "@/pages/Dashboard";
+import UnifiedDashboard from "@/pages/UnifiedDashboard";
 import Marketplace from "@/pages/Marketplace";
 import Workflow from "@/pages/Workflow";
 import SellerDashboard from "@/pages/SellerDashboard";
@@ -17,7 +17,7 @@ import Auth from "@/pages/Auth";
 import SellerDashboardNew from "@/pages/SellerDashboardNew";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import AgentBuilder from "@/pages/AgentBuilder";
-import Settings from "@/pages/Settings";
+import UnifiedSettings from "@/pages/UnifiedSettings";
 import AuthCallback from "@/pages/AuthCallback";
 import AuthTest from "@/pages/AuthTest";
 import MarketplaceListingWizard from "@/pages/MarketplaceListingWizard";
@@ -47,7 +47,7 @@ function App() {
                     element={
                       <ProtectedRoute>
                         <Layout>
-                          <Dashboard />
+                          <UnifiedDashboard />
                         </Layout>
                       </ProtectedRoute>
                     }
@@ -109,7 +109,7 @@ function App() {
                     path="/settings"
                     element={
                       <Layout>
-                        <Settings />
+                        <UnifiedSettings />
                       </Layout>
                     }
                   />
