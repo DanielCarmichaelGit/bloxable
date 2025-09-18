@@ -1,0 +1,1574 @@
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
+import { marketplaceApi, MarketplaceItem } from "../lib/supabase";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Textarea } from "../components/ui/textarea";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import {
+  Save,
+  Eye,
+  Home,
+  Plus,
+  X,
+  Star,
+  DollarSign,
+  Clock,
+  AlertCircle,
+  CheckCircle,
+} from "lucide-react";
+
+// allow up to 6 decimals; tweak as needed
+const DECIMAL_RE = /^(\d+(\.\d{0,6})?|\.\d{0,6})?$/;
+
+interface UsageTier {
+  id: string;
+  minUsage: number;
+  maxUsage?: number;
+  pricePerUnit: number;
+  _min?: string; // transient UI strings
+  _max?: string;
+  _price?: string;
+}
+
+interface MarketplaceItemFormData {
+  name: string;
+  description: string;
+  price: number;
+  billing_period:
+    | "one_time"
+    | "monthly"
+    | "yearly"
+    | "lifetime"
+    | "usage_based";
+  usage_pricing_type?: "flat_rate" | "tiered";
+  usage_tiers?: UsageTier[];
+  flat_usage_price?: number;
+  source_code_price?: number;
+  source_code_format?: "json" | "provided_in_chat" | "url";
+  source_code_url?: string;
+  setup_time?: string;
+  installation_url?: string;
+  tags: string[];
+  demo_link?: string;
+  status: "draft" | "pending_review" | "active" | "inactive" | "rejected";
+  is_public: boolean;
+  usage_test_completed?: boolean;
+}
+
+const setupTimeOptions = [
+  { value: "self-service", label: "Self Service" },
+  { value: "15min", label: "15 minutes" },
+  { value: "30min", label: "30 minutes" },
+  { value: "1hr", label: "1 hour" },
+  { value: "2hr", label: "2 hours" },
+  { value: "4hr", label: "4 hours" },
+  { value: "1day", label: "1 day" },
+  { value: "2days", label: "2 days" },
+  { value: "1week", label: "1 week" },
+];
+
+const commonTags = [
+  "automation",
+  "productivity",
+  "small-business",
+  "local-business",
+  "e-commerce",
+  "crm",
+  "email",
+  "social-media",
+  "analytics",
+  "inventory",
+  "scheduling",
+  "notifications",
+  "data-processing",
+  "integration",
+  "workflow",
+  "api",
+];
+
+// Helper functions
+const getDescriptionLengthColor = (length: number): string => {
+  if (length >= 50) return "text-green-600 dark:text-green-400";
+  if (length > 0) return "text-yellow-600 dark:text-yellow-400";
+  return "text-muted-foreground";
+};
+
+const getBillingPeriodForPricing = (
+  pricingType: "flat" | "usage",
+  formData: MarketplaceItemFormData
+) => {
+  if (pricingType === "usage") {
+    return "one_time";
+  }
+  if (formData.billing_period === "usage_based") {
+    return "one_time";
+  }
+  return formData.billing_period;
+};
+
+// Publishing requirements validation
+const getPublishingRequirements = (
+  formData: MarketplaceItemFormData,
+  pricingType: "flat" | "usage"
+) => {
+  const requirements = [];
+
+  // Basic requirements
+  if (!formData.name.trim()) {
+    requirements.push({
+      id: "name",
+      label: "Workflow name is required",
+      completed: false,
+    });
+  } else {
+    requirements.push({
+      id: "name",
+      label: "Workflow name is required",
+      completed: true,
+    });
+  }
+
+  if (!formData.description.trim() || formData.description.trim().length < 50) {
+    requirements.push({
+      id: "description",
+      label: "Description must be at least 50 characters",
+      completed: false,
+    });
+  } else {
+    requirements.push({
+      id: "description",
+      label: "Description must be at least 50 characters",
+      completed: true,
+    });
+  }
+
+  // Self-service installation URL requirement
+  if (formData.setup_time === "self-service") {
+    if (!formData.installation_url?.trim()) {
+      requirements.push({
+        id: "installation_url",
+        label: "Installation URL is required for self-service items",
+        completed: false,
+      });
+    } else {
+      requirements.push({
+        id: "installation_url",
+        label: "Installation URL is required for self-service items",
+        completed: true,
+      });
+    }
+  }
+
+  // Usage-based pricing test requirement
+  if (pricingType === "usage") {
+    if (!formData.usage_test_completed) {
+      requirements.push({
+        id: "usage_test",
+        label: "Usage test must be completed for usage-based pricing",
+        completed: false,
+      });
+    } else {
+      requirements.push({
+        id: "usage_test",
+        label: "Usage test must be completed for usage-based pricing",
+        completed: true,
+      });
+    }
+  }
+
+  return requirements;
+};
+
+const canPublish = (
+  formData: MarketplaceItemFormData,
+  pricingType: "flat" | "usage"
+) => {
+  const requirements = getPublishingRequirements(formData, pricingType);
+  return requirements.every((req) => req.completed);
+};
+
+// Live Preview Component
+const LivePreview = ({
+  formData,
+  pricingType,
+}: {
+  formData: MarketplaceItemFormData;
+  pricingType: "flat" | "usage";
+}) => {
+  const formatPrice = (price: number) => {
+    return price === 0 ? "Free" : `$${price}`;
+  };
+
+  const getBillingPeriodText = (period: string) => {
+    switch (period) {
+      case "one_time":
+        return "one-time";
+      case "monthly":
+        return "monthly";
+      case "yearly":
+        return "yearly";
+      case "lifetime":
+        return "lifetime";
+      case "usage_based":
+        return "usage-based";
+      default:
+        return "";
+    }
+  };
+
+  const getPricingDisplayText = (
+    formData: MarketplaceItemFormData,
+    pricingType: "flat" | "usage"
+  ) => {
+    if (pricingType === "usage") {
+      if (
+        formData.usage_pricing_type === "flat_rate" &&
+        formData.flat_usage_price
+      ) {
+        return `$${formData.flat_usage_price}/execution`;
+      }
+      if (
+        formData.usage_pricing_type === "tiered" &&
+        formData.usage_tiers &&
+        formData.usage_tiers.length > 0
+      ) {
+        return "Tiered pricing";
+      }
+      return "Usage-based";
+    }
+
+    if (formData.price > 0) {
+      return `${formatPrice(formData.price)} ${getBillingPeriodText(
+        formData.billing_period
+      )}`;
+    }
+    return "Free";
+  };
+
+  const getSetupTimeColor = (time: string) => {
+    if (time.includes("15min") || time.includes("30min")) {
+      return "bg-green-100 text-green-800 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800";
+    }
+    if (time.includes("1hr") || time.includes("2hr") || time.includes("4hr")) {
+      return "bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-800";
+    }
+    if (
+      time.includes("1day") ||
+      time.includes("2day") ||
+      time.includes("1week")
+    ) {
+      return "bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-800";
+    }
+    return "bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-600";
+  };
+
+  return (
+    <Card className="h-full border-0 shadow-sm">
+      <CardHeader>
+        <div className="flex items-start justify-between mb-2">
+          <CardTitle className="text-lg font-semibold line-clamp-1">
+            {formData.name || "Your Workflow Name"}
+          </CardTitle>
+          <div className="flex items-center space-x-1 text-sm text-muted-foreground">
+            <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+            <span>4.8</span>
+          </div>
+        </div>
+        <CardDescription className="line-clamp-3">
+          {formData.description ||
+            "Describe what your workflow does, who it's for, and what problem it solves..."}
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex flex-wrap gap-1">
+              {formData.tags.slice(0, 2).map((tag) => (
+                <Badge key={tag} variant="secondary" className="text-xs">
+                  {tag}
+                </Badge>
+              ))}
+              {formData.tags.length > 2 && (
+                <Badge variant="outline" className="text-xs">
+                  +{formData.tags.length - 2}
+                </Badge>
+              )}
+              {formData.tags.length === 0 && (
+                <div className="h-5 w-16 bg-muted rounded-full animate-pulse" />
+              )}
+            </div>
+            {formData.setup_time ? (
+              <Badge
+                variant="outline"
+                className={`text-xs px-2 py-1 ${getSetupTimeColor(
+                  formData.setup_time
+                )}`}
+              >
+                <Clock className="h-3 w-3 mr-1" />
+                {formData.setup_time}
+              </Badge>
+            ) : (
+              <div className="h-5 w-16 bg-muted rounded-full animate-pulse" />
+            )}
+          </div>
+
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <span>by You</span>
+            <div className="flex items-center space-x-1">
+              <DollarSign className="h-4 w-4" />
+              <span className="font-semibold text-foreground">
+                {getPricingDisplayText(formData, pricingType)}
+              </span>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+
+      <CardFooter>
+        <div className="w-full flex gap-2">
+          <Badge
+            variant={formData.status === "active" ? "default" : "secondary"}
+            className="flex-1 justify-center"
+          >
+            {formData.status === "active" ? (
+              <>
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Published
+              </>
+            ) : (
+              <>
+                <AlertCircle className="h-3 w-3 mr-1" />
+                {formData.status.replace("_", " ")}
+              </>
+            )}
+          </Badge>
+        </div>
+      </CardFooter>
+    </Card>
+  );
+};
+
+export default function MarketplaceItemEdit() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { id } = useParams<{ id: string }>();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [originalItem, setOriginalItem] = useState<MarketplaceItem | null>(
+    null
+  );
+  const [formData, setFormData] = useState<MarketplaceItemFormData>({
+    name: "",
+    description: "",
+    price: 0,
+    billing_period: "one_time",
+    usage_pricing_type: undefined,
+    usage_tiers: [],
+    flat_usage_price: undefined,
+    source_code_price: undefined,
+    source_code_format: undefined,
+    source_code_url: undefined,
+    setup_time: "",
+    installation_url: "",
+    tags: [],
+    demo_link: "",
+    status: "draft",
+    is_public: false,
+    usage_test_completed: false,
+  });
+  const [newTag, setNewTag] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [pricingType, setPricingType] = useState<"flat" | "usage">("flat");
+  const [priceInput, setPriceInput] = useState("");
+  const [flatUsagePriceInput, setFlatUsagePriceInput] = useState<string>("");
+
+  // Load the item data
+  useEffect(() => {
+    if (!id || !user) return;
+
+    const loadItem = async () => {
+      setIsLoading(true);
+      try {
+        const item = await marketplaceApi.getItemById(id);
+        if (item) {
+          setOriginalItem(item);
+
+          // Determine pricing type from metadata
+          const isUsageBased = item.metadata?.usage_pricing_type;
+          const pricingType = isUsageBased ? "usage" : "flat";
+          setPricingType(pricingType);
+
+          // Set form data
+          setFormData({
+            name: item.name,
+            description: item.description,
+            price: item.price,
+            billing_period: item.billing_period,
+            usage_pricing_type: item.metadata?.usage_pricing_type,
+            usage_tiers: item.metadata?.usage_tiers || [],
+            flat_usage_price: item.metadata?.flat_usage_price,
+            source_code_price: item.source_code_price,
+            source_code_format: item.source_code_format,
+            source_code_url: item.source_code_url,
+            setup_time: item.setup_time || "",
+            installation_url: item.metadata?.installation_url || "",
+            tags: item.tags || [],
+            demo_link: item.demo_link || "",
+            status: item.status,
+            is_public: item.is_public,
+            usage_test_completed: item.metadata?.usage_test_completed || false,
+          });
+
+          // Set input values for display
+          setPriceInput(item.price.toString());
+          setFlatUsagePriceInput(
+            item.metadata?.flat_usage_price?.toString() || ""
+          );
+        } else {
+          navigate("/dashboard");
+        }
+      } catch (error) {
+        console.error("Error loading item:", error);
+        navigate("/dashboard");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadItem();
+  }, [id, user, navigate]);
+
+  // Validation functions for pricing tiers
+  const validatePricingTiers = (
+    tiers: UsageTier[]
+  ): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+
+    if (!tiers || tiers.length === 0) {
+      return {
+        isValid: false,
+        errors: ["At least one pricing tier is required"],
+      };
+    }
+
+    // Check for empty tiers
+    tiers.forEach((tier, index) => {
+      if (!tier.minUsage && tier.minUsage !== 0) {
+        errors.push(`Tier ${index + 1}: Minimum usage is required`);
+      }
+      if (!tier.pricePerUnit && tier.pricePerUnit !== 0) {
+        errors.push(`Tier ${index + 1}: Price per unit is required`);
+      }
+    });
+
+    // Check for tier conflicts (overlapping ranges)
+    const sortedTiers = [...tiers].sort(
+      (a, b) => (a.minUsage || 0) - (b.minUsage || 0)
+    );
+
+    for (let i = 0; i < sortedTiers.length - 1; i++) {
+      const currentTier = sortedTiers[i];
+      const nextTier = sortedTiers[i + 1];
+
+      const currentMax = currentTier.maxUsage || Infinity;
+      const nextMin = nextTier.minUsage || 0;
+
+      if (currentMax >= nextMin) {
+        errors.push(
+          `Tier ranges cannot overlap. Tier ${
+            tiers.indexOf(currentTier) + 1
+          } and Tier ${tiers.indexOf(nextTier) + 1} have conflicting ranges`
+        );
+      }
+    }
+
+    // Check for gaps in tier ranges
+    for (let i = 0; i < sortedTiers.length - 1; i++) {
+      const currentTier = sortedTiers[i];
+      const nextTier = sortedTiers[i + 1];
+
+      const currentMax = currentTier.maxUsage || Infinity;
+      const nextMin = nextTier.minUsage || 0;
+
+      if (currentMax < nextMin - 1) {
+        errors.push(
+          `There's a gap between Tier ${
+            tiers.indexOf(currentTier) + 1
+          } and Tier ${
+            tiers.indexOf(nextTier) + 1
+          }. All usage ranges should be covered.`
+        );
+      }
+    }
+
+    return { isValid: errors.length === 0, errors };
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    // Basic validation
+    if (!formData.name.trim()) newErrors.name = "Name is required";
+    if (!formData.description.trim()) {
+      newErrors.description = "Description is required";
+    } else if (formData.description.trim().length < 50) {
+      newErrors.description = "Description must be at least 50 characters";
+    }
+
+    // Pricing validation
+    if (pricingType === "usage") {
+      if (!formData.usage_pricing_type) {
+        newErrors.usage_pricing_type = "Please select a pricing model";
+      } else if (formData.usage_pricing_type === "flat_rate") {
+        if (!formData.flat_usage_price || formData.flat_usage_price <= 0) {
+          newErrors.flat_usage_price = "Price per execution is required";
+        }
+      } else if (formData.usage_pricing_type === "tiered") {
+        const tierValidation = validatePricingTiers(formData.usage_tiers || []);
+        if (!tierValidation.isValid) {
+          newErrors.usage_tiers = tierValidation.errors.join("; ");
+        }
+      }
+    } else {
+      if (formData.price < 0) newErrors.price = "Price cannot be negative";
+    }
+
+    // Source code validation
+    if (
+      formData.source_code_format === "url" &&
+      !formData.source_code_url?.trim()
+    ) {
+      newErrors.source_code_url =
+        "Source code URL is required when format is URL";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleInputChange = (
+    field: keyof MarketplaceItemFormData,
+    value: any
+  ) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: "" }));
+    }
+  };
+
+  const handleAddTag = () => {
+    if (newTag.trim() && !formData.tags.includes(newTag.trim().toLowerCase())) {
+      setFormData((prev) => ({
+        ...prev,
+        tags: [...prev.tags, newTag.trim().toLowerCase()],
+      }));
+      setNewTag("");
+    }
+  };
+
+  const handleCommonTagClick = (tag: string) => {
+    if (!formData.tags.includes(tag)) {
+      setFormData((prev) => ({
+        ...prev,
+        tags: [...prev.tags, tag],
+      }));
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      tags: prev.tags.filter((tag) => tag !== tagToRemove),
+    }));
+  };
+
+  const handleSave = async () => {
+    if (!validateForm() || !id) return;
+
+    setIsSaving(true);
+    try {
+      const updateData = {
+        name: formData.name,
+        description: formData.description,
+        price: pricingType === "usage" ? 0 : formData.price,
+        billing_period: getBillingPeriodForPricing(pricingType, formData),
+        source_code_price: formData.source_code_price || undefined,
+        source_code_format: formData.source_code_format || undefined,
+        source_code_url: formData.source_code_url || undefined,
+        setup_time: formData.setup_time || undefined,
+        tags: formData.tags,
+        demo_link: formData.demo_link || undefined,
+        status: formData.status,
+        is_public: formData.is_public,
+        // Store usage-based pricing and other metadata
+        metadata: {
+          ...(pricingType === "usage"
+            ? {
+                usage_pricing_type: formData.usage_pricing_type,
+                usage_tiers: formData.usage_tiers,
+                flat_usage_price: formData.flat_usage_price,
+                usage_test_completed: formData.usage_test_completed,
+              }
+            : {}),
+          installation_url: formData.installation_url,
+        },
+      };
+
+      const updatedItem = await marketplaceApi.updateItem(id, updateData);
+
+      if (updatedItem) {
+        // Show success message and redirect
+        alert("Listing updated successfully!");
+        navigate("/dashboard");
+      } else {
+        alert("Failed to update listing. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error updating listing:", error);
+      alert("An error occurred while updating your listing. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!validateForm() || !id) return;
+
+    setIsSaving(true);
+    try {
+      const updateData = {
+        name: formData.name,
+        description: formData.description,
+        price: pricingType === "usage" ? 0 : formData.price,
+        billing_period: getBillingPeriodForPricing(pricingType, formData),
+        source_code_price: formData.source_code_price || undefined,
+        source_code_format: formData.source_code_format || undefined,
+        source_code_url: formData.source_code_url || undefined,
+        setup_time: formData.setup_time || undefined,
+        tags: formData.tags,
+        demo_link: formData.demo_link || undefined,
+        status: "active" as const,
+        is_public: true,
+        published_at: new Date().toISOString(),
+        // Store usage-based pricing and other metadata
+        metadata: {
+          ...(pricingType === "usage"
+            ? {
+                usage_pricing_type: formData.usage_pricing_type,
+                usage_tiers: formData.usage_tiers,
+                flat_usage_price: formData.flat_usage_price,
+                usage_test_completed: formData.usage_test_completed,
+              }
+            : {}),
+          installation_url: formData.installation_url,
+        },
+      };
+
+      const updatedItem = await marketplaceApi.updateItem(id, updateData);
+
+      if (updatedItem) {
+        alert("Listing published successfully!");
+        navigate("/dashboard");
+      } else {
+        alert("Failed to publish listing. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error publishing listing:", error);
+      alert(
+        "An error occurred while publishing your listing. Please try again."
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleReturnToDashboard = () => {
+    const hasUnsavedChanges =
+      !originalItem ||
+      formData.name !== originalItem.name ||
+      formData.description !== originalItem.description ||
+      formData.price !== originalItem.price ||
+      formData.status !== originalItem.status ||
+      formData.is_public !== originalItem.is_public;
+
+    if (hasUnsavedChanges) {
+      const confirmed = window.confirm(
+        "You have unsaved changes. Are you sure you want to leave? Your current edits will be lost."
+      );
+      if (confirmed) {
+        navigate("/dashboard");
+      }
+    } else {
+      navigate("/dashboard");
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-foreground mb-4">
+            Access Denied
+          </h1>
+          <p className="text-muted-foreground">
+            Please log in to edit marketplace listings.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading listing...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header with Back Button */}
+        <div className="mb-8">
+          <div className="flex items-center mb-6">
+            <Button
+              variant="ghost"
+              onClick={handleReturnToDashboard}
+              className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <Home className="h-4 w-4" />
+              Back to Dashboard
+            </Button>
+          </div>
+
+          <div className="text-center">
+            <h1 className="text-4xl font-bold text-foreground mb-2">
+              Edit Marketplace Listing
+            </h1>
+            <p className="text-muted-foreground text-lg">
+              Update your workflow listing information
+            </p>
+          </div>
+        </div>
+
+        {/* Main Layout */}
+        <div className="max-w-6xl mx-auto">
+          {/* Publishing Requirements */}
+          <Card className="mb-8 border-2 border-destructive/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-destructive" />
+                Publishing Requirements
+              </CardTitle>
+              <CardDescription>
+                Complete all requirements below to publish your listing
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {getPublishingRequirements(formData, pricingType).map(
+                  (requirement) => (
+                    <div
+                      key={requirement.id}
+                      className="flex items-center gap-3"
+                    >
+                      <div
+                        className={`w-5 h-5 rounded-full flex items-center justify-center ${
+                          requirement.completed
+                            ? "bg-green-100 text-green-600 dark:bg-green-900/20 dark:text-green-400"
+                            : "bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400"
+                        }`}
+                      >
+                        {requirement.completed ? (
+                          <CheckCircle className="h-3 w-3" />
+                        ) : (
+                          <X className="h-3 w-3" />
+                        )}
+                      </div>
+                      <span
+                        className={`text-sm ${
+                          requirement.completed
+                            ? "text-green-700 dark:text-green-300"
+                            : "text-red-700 dark:text-red-300"
+                        }`}
+                      >
+                        {requirement.label}
+                      </span>
+                    </div>
+                  )
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="max-w-4xl mx-auto">
+            {/* Edit Form */}
+            <div className="space-y-8">
+              {/* Basic Information */}
+              <div>
+                <h2 className="text-2xl font-semibold text-foreground mb-4">Basic Information</h2>
+                <div className="border-t border-border mb-6"></div>
+                <Card className="p-6">
+                  <CardContent className="space-y-6">
+                  <div>
+                    <Label
+                      htmlFor="name"
+                      className="text-foreground font-medium"
+                    >
+                      Workflow Name *
+                    </Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) =>
+                        handleInputChange("name", e.target.value)
+                      }
+                      placeholder="e.g., Customer Inquiry to CRM Automation"
+                      className={`mt-2 ${
+                        errors.name ? "border-destructive" : ""
+                      }`}
+                    />
+                    {errors.name && (
+                      <p className="text-sm text-destructive mt-1">
+                        {errors.name}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label
+                      htmlFor="description"
+                      className="text-foreground font-medium"
+                    >
+                      Description *
+                    </Label>
+                    <Textarea
+                      id="description"
+                      value={formData.description}
+                      onChange={(e) =>
+                        handleInputChange("description", e.target.value)
+                      }
+                      placeholder="Describe what your workflow does, who it's for, and what problem it solves..."
+                      rows={6}
+                      className={`mt-2 ${
+                        errors.description ? "border-destructive" : ""
+                      }`}
+                    />
+                    <p
+                      className={`text-sm mt-1 ${getDescriptionLengthColor(
+                        formData.description.trim().length
+                      )}`}
+                    >
+                      {formData.description.trim().length}/50 characters minimum
+                      {formData.description.trim().length >= 50 && " ✓"}
+                    </p>
+                    {errors.description && (
+                      <p className="text-sm text-destructive mt-1">
+                        {errors.description}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label
+                      htmlFor="setup_time"
+                      className="text-foreground font-medium"
+                    >
+                      Setup Time
+                    </Label>
+                    <Select
+                      value={formData.setup_time || ""}
+                      onValueChange={(value) =>
+                        handleInputChange("setup_time", value)
+                      }
+                    >
+                      <SelectTrigger className="mt-2">
+                        <SelectValue placeholder="How long does setup take?" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {setupTimeOptions.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {formData.setup_time === "self-service" && (
+                    <div>
+                      <Label
+                        htmlFor="installation_url"
+                        className="text-foreground font-medium"
+                      >
+                        Installation URL *
+                      </Label>
+                      <Input
+                        id="installation_url"
+                        type="url"
+                        value={formData.installation_url || ""}
+                        onChange={(e) =>
+                          handleInputChange("installation_url", e.target.value)
+                        }
+                        placeholder="https://example.com/install"
+                        className={`mt-2 ${
+                          errors.installation_url ? "border-destructive" : ""
+                        }`}
+                      />
+                      <p className="text-sm text-muted-foreground mt-1">
+                        URL where users can install or set up your workflow
+                      </p>
+                      {errors.installation_url && (
+                        <p className="text-sm text-destructive mt-1">
+                          {errors.installation_url}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Pricing Section */}
+              <div>
+                <h2 className="text-2xl font-semibold text-foreground mb-4">Pricing & Billing</h2>
+                <div className="border-t border-border mb-6"></div>
+                <Card className="p-6">
+                  <CardContent className="space-y-6">
+                  {/* Pricing Type Toggle */}
+                  <div className="space-y-3">
+                    <div>
+                      <h3 className="font-medium text-foreground">
+                        Pricing Model
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        Choose how you want to price your workflow
+                      </p>
+                    </div>
+
+                    <div className="flex items-center bg-muted rounded-lg p-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPricingType("flat");
+                          setPriceInput("");
+                          setFlatUsagePriceInput("");
+                          setFormData((prev) => ({
+                            ...prev,
+                            price: 0,
+                            billing_period: "one_time",
+                            usage_pricing_type: undefined,
+                            usage_tiers: [],
+                            flat_usage_price: undefined,
+                          }));
+                        }}
+                        className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                          pricingType === "flat"
+                            ? "bg-background text-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        Flat Pricing
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPricingType("usage");
+                          setPriceInput("");
+                          setFlatUsagePriceInput("");
+                          setFormData((prev) => ({
+                            ...prev,
+                            price: 0,
+                            billing_period: "usage_based",
+                            usage_pricing_type: undefined,
+                            usage_tiers: [],
+                            flat_usage_price: undefined,
+                          }));
+                        }}
+                        className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
+                          pricingType === "usage"
+                            ? "bg-background text-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        Usage Pricing
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Commission Info */}
+                  <div className="text-xs text-muted-foreground">
+                    {pricingType === "flat"
+                      ? "4% commission on all transactions"
+                      : "6% commission on usage (up to $15/month) + webhook required"}
+                  </div>
+
+                  {pricingType === "flat" ? (
+                    <>
+                      <div>
+                        <Label
+                          htmlFor="price"
+                          className="text-foreground font-medium"
+                        >
+                          Price (USD) *
+                        </Label>
+                        <Input
+                          id="price"
+                          type="text"
+                          inputMode="decimal"
+                          value={priceInput}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            if (DECIMAL_RE.test(value)) {
+                              setPriceInput(value);
+                            }
+                          }}
+                          onBlur={() => {
+                            const n = parseFloat(priceInput);
+                            handleInputChange(
+                              "price",
+                              Number.isFinite(n) ? n : 0
+                            );
+                          }}
+                          placeholder="0.00"
+                          className={`mt-2 ${
+                            errors.price ? "border-destructive" : ""
+                          }`}
+                        />
+                        {errors.price && (
+                          <p className="text-sm text-destructive mt-1">
+                            {errors.price}
+                          </p>
+                        )}
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Set to 0 for free workflows
+                        </p>
+                      </div>
+
+                      {formData.price > 0 && (
+                        <div>
+                          <Label
+                            htmlFor="billing_period"
+                            className="text-foreground font-medium"
+                          >
+                            Billing Period *
+                          </Label>
+                          <Select
+                            value={formData.billing_period}
+                            onValueChange={(value) =>
+                              handleInputChange("billing_period", value)
+                            }
+                          >
+                            <SelectTrigger
+                              className={`mt-2 ${
+                                errors.billing_period
+                                  ? "border-destructive"
+                                  : ""
+                              }`}
+                            >
+                              <SelectValue placeholder="Select billing period" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="one_time">
+                                One-time payment
+                              </SelectItem>
+                              <SelectItem value="monthly">
+                                Monthly subscription
+                              </SelectItem>
+                              <SelectItem value="yearly">
+                                Yearly subscription
+                              </SelectItem>
+                              <SelectItem value="lifetime">
+                                Lifetime access
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {errors.billing_period && (
+                            <p className="text-sm text-destructive mt-1">
+                              {errors.billing_period}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* Usage pricing type */}
+                      <div>
+                        <Label className="text-foreground font-medium">
+                          Usage Pricing Model
+                        </Label>
+                        <Select
+                          value={formData.usage_pricing_type || ""}
+                          onValueChange={(value) =>
+                            handleInputChange(
+                              "usage_pricing_type",
+                              value as "flat_rate" | "tiered"
+                            )
+                          }
+                        >
+                          <SelectTrigger className="mt-2">
+                            <SelectValue placeholder="Select pricing type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="flat_rate">
+                              Flat rate per execution
+                            </SelectItem>
+                            <SelectItem value="tiered">
+                              Tiered pricing
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Flat rate pricing */}
+                      {formData.usage_pricing_type === "flat_rate" && (
+                        <div>
+                          <Label
+                            htmlFor="flat_usage_price"
+                            className="text-foreground font-medium"
+                          >
+                            Price per Execution (USD)
+                          </Label>
+                          <Input
+                            id="flat_usage_price"
+                            type="text"
+                            inputMode="decimal"
+                            value={flatUsagePriceInput}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              if (DECIMAL_RE.test(v)) setFlatUsagePriceInput(v);
+                            }}
+                            onBlur={() => {
+                              const n = parseFloat(flatUsagePriceInput);
+                              handleInputChange(
+                                "flat_usage_price",
+                                Number.isFinite(n) ? n : undefined
+                              );
+                            }}
+                            placeholder="0.01"
+                            className="mt-2"
+                          />
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Amount charged for each workflow execution
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Tiered pricing */}
+                      {formData.usage_pricing_type === "tiered" && (
+                        <div>
+                          <Label className="text-foreground font-medium">
+                            Usage Tiers
+                          </Label>
+                          <p className="text-sm text-muted-foreground mt-1 mb-3">
+                            Define pricing tiers based on usage volume
+                          </p>
+
+                          <div className="space-y-3">
+                            {formData.usage_tiers?.map((tier, index) => (
+                              <div
+                                key={tier.id}
+                                className="flex gap-2 items-end"
+                              >
+                                <div className="flex-1">
+                                  <Label className="text-xs text-muted-foreground">
+                                    Min Usage
+                                  </Label>
+                                  <Input
+                                    type="text"
+                                    inputMode="numeric"
+                                    pattern="\d*"
+                                    value={
+                                      tier._min ??
+                                      (tier.minUsage != null
+                                        ? String(tier.minUsage)
+                                        : "")
+                                    }
+                                    onChange={(e) => {
+                                      const v = e.target.value;
+                                      const newTiers = [
+                                        ...(formData.usage_tiers || []),
+                                      ];
+                                      newTiers[index] = { ...tier, _min: v };
+                                      if (/^\d*$/.test(v)) {
+                                        newTiers[index].minUsage =
+                                          v === "" ? 0 : parseInt(v, 10);
+                                      }
+                                      handleInputChange(
+                                        "usage_tiers",
+                                        newTiers
+                                      );
+                                    }}
+                                    placeholder="0"
+                                  />
+                                </div>
+                                <div className="flex-1">
+                                  <Label className="text-xs text-muted-foreground">
+                                    Max Usage (optional)
+                                  </Label>
+                                  <Input
+                                    type="text"
+                                    inputMode="numeric"
+                                    pattern="\d*"
+                                    value={
+                                      tier._max ??
+                                      (tier.maxUsage != null
+                                        ? String(tier.maxUsage)
+                                        : "")
+                                    }
+                                    onChange={(e) => {
+                                      const v = e.target.value;
+                                      const newTiers = [
+                                        ...(formData.usage_tiers || []),
+                                      ];
+                                      newTiers[index] = { ...tier, _max: v };
+                                      if (/^\d*$/.test(v)) {
+                                        newTiers[index].maxUsage =
+                                          v === ""
+                                            ? undefined
+                                            : parseInt(v, 10);
+                                      }
+                                      handleInputChange(
+                                        "usage_tiers",
+                                        newTiers
+                                      );
+                                    }}
+                                    placeholder="Unlimited"
+                                  />
+                                </div>
+                                <div className="flex-1">
+                                  <Label className="text-xs text-muted-foreground">
+                                    Price per Unit
+                                  </Label>
+                                  <Input
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={
+                                      tier._price ??
+                                      (tier.pricePerUnit != null
+                                        ? String(tier.pricePerUnit)
+                                        : "")
+                                    }
+                                    onChange={(e) => {
+                                      const v = e.target.value;
+                                      if (!DECIMAL_RE.test(v)) return;
+                                      const newTiers = [
+                                        ...(formData.usage_tiers || []),
+                                      ];
+                                      newTiers[index] = { ...tier, _price: v };
+                                      const n = parseFloat(v);
+                                      newTiers[index].pricePerUnit =
+                                        Number.isFinite(n) ? n : 0;
+                                      handleInputChange(
+                                        "usage_tiers",
+                                        newTiers
+                                      );
+                                    }}
+                                    placeholder="0.01"
+                                  />
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    const newTiers = (
+                                      formData.usage_tiers || []
+                                    ).filter((_, i) => i !== index);
+                                    handleInputChange("usage_tiers", newTiers);
+                                  }}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            ))}
+
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => {
+                                const newTier: UsageTier = {
+                                  id: Date.now().toString(),
+                                  minUsage: 0,
+                                  pricePerUnit: 0,
+                                };
+                                const newTiers = [
+                                  ...(formData.usage_tiers || []),
+                                  newTier,
+                                ];
+                                handleInputChange("usage_tiers", newTiers);
+                              }}
+                              className="w-full"
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add Tier
+                            </Button>
+                          </div>
+
+                          {/* Tier validation errors */}
+                          {errors.usage_tiers && (
+                            <div className="mt-3 p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+                              <p className="text-sm text-destructive font-medium">
+                                Pricing Tier Issues:
+                              </p>
+                              <p className="text-sm text-destructive mt-1">
+                                {errors.usage_tiers}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Usage Test Requirement */}
+              {pricingType === "usage" && (
+                <div>
+                  <h2 className="text-2xl font-semibold text-foreground mb-4">Usage Test Requirement</h2>
+                  <div className="border-t border-border mb-6"></div>
+                  <Card className="p-6">
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-4 rounded-lg border border-border">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-6 h-6 rounded-full flex items-center justify-center ${
+                              formData.usage_test_completed
+                                ? "bg-green-100 text-green-600 dark:bg-green-900/20 dark:text-green-400"
+                                : "bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400"
+                            }`}
+                          >
+                            {formData.usage_test_completed ? (
+                              <CheckCircle className="h-4 w-4" />
+                            ) : (
+                              <Clock className="h-4 w-4" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-medium text-foreground">
+                              Usage Test Completed
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {formData.usage_test_completed
+                                ? "Usage test has been completed successfully"
+                                : "Usage test must be completed before publishing"}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant={
+                            formData.usage_test_completed
+                              ? "outline"
+                              : "default"
+                          }
+                          onClick={() =>
+                            handleInputChange(
+                              "usage_test_completed",
+                              !formData.usage_test_completed
+                            )
+                          }
+                          className="min-w-[120px]"
+                        >
+                          {formData.usage_test_completed
+                            ? "Mark Incomplete"
+                            : "Mark Complete"}
+                        </Button>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        For usage-based pricing, you must complete a test run of
+                        your workflow to ensure it works correctly before
+                        publishing.
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+                  </CardContent>                </div>
+              )}
+
+              {/* Additional Details */}
+              <div>
+                <h2 className="text-2xl font-semibold text-foreground mb-4">Additional Details</h2>
+                <div className="border-t border-border mb-6"></div>
+                <Card className="p-6">
+                <CardContent className="space-y-6">
+                  <div>
+                    <Label className="text-foreground font-medium">Tags</Label>
+                    <div className="flex flex-wrap gap-2 mb-3 mt-2">
+                      {formData.tags.map((tag) => (
+                        <Badge
+                          key={tag}
+                          variant="secondary"
+                          className="flex items-center gap-1"
+                        >
+                          {tag}
+                          <X
+                            className="h-3 w-3 cursor-pointer hover:text-destructive"
+                            onClick={() => handleRemoveTag(tag)}
+                          />
+                        </Badge>
+                      ))}
+                    </div>
+
+                    <div className="flex gap-2 mb-3">
+                      <Input
+                        value={newTag}
+                        onChange={(e) => setNewTag(e.target.value)}
+                        placeholder="Add a tag"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddTag();
+                          }
+                        }}
+                      />
+                      <Button type="button" onClick={handleAddTag} size="sm">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <div className="text-sm text-muted-foreground mb-2">
+                      Common tags:
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {commonTags.map((tag) => (
+                        <Badge
+                          key={tag}
+                          variant="outline"
+                          className="cursor-pointer hover:bg-accent hover:text-accent-foreground transition-colors"
+                          onClick={() => handleCommonTagClick(tag)}
+                        >
+                          {tag}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label
+                      htmlFor="demo_link"
+                      className="text-foreground font-medium"
+                    >
+                      Demo Link (Optional)
+                    </Label>
+                    <Input
+                      id="demo_link"
+                      type="url"
+                      value={formData.demo_link || ""}
+                      onChange={(e) =>
+                        handleInputChange("demo_link", e.target.value)
+                      }
+                      placeholder="https://example.com/demo"
+                      className="mt-2"
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Link to a demo or preview of your workflow
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Status and Actions */}
+              <div>
+                <h2 className="text-2xl font-semibold text-foreground mb-4">Publishing Status</h2>
+                <div className="border-t border-border mb-6"></div>
+                <Card className="p-6">
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-foreground font-medium">
+                        Current Status
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        {(() => {
+                          switch (formData.status) {
+                            case "active":
+                              return "Published and visible to buyers";
+                            case "draft":
+                              return "Draft - not visible to buyers";
+                            case "pending_review":
+                              return "Pending review";
+                            case "inactive":
+                              return "Inactive - not visible to buyers";
+                            default:
+                              return "Rejected";
+                          }
+                        })()}
+                      </p>
+                    </div>
+                    <Badge
+                      variant={
+                        formData.status === "active" ? "default" : "secondary"
+                      }
+                      className="text-sm"
+                    >
+                      {formData.status.replace("_", " ")}
+                    </Badge>
+                  </div>
+
+                  {formData.status === "draft" && (
+                    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                      <h4 className="font-medium text-yellow-800 dark:text-yellow-200 mb-2">
+                        Ready to Publish?
+                      </h4>
+                      <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                        Once you publish this listing, it will be visible to
+                        buyers in the marketplace.
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+                <CardFooter className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="flex items-center gap-2"
+                  >
+                    <Save className="h-4 w-4" />
+                    {isSaving ? "Saving..." : "Save Changes"}
+                  </Button>
+                  {formData.status === "draft" && (
+                    <Button
+                      onClick={handlePublish}
+                      disabled={isSaving || !canPublish(formData, pricingType)}
+                      className="flex items-center gap-2"
+                    >
+                      <Eye className="h-4 w-4" />
+                      {isSaving ? "Publishing..." : "Publish Listing"}
+                    </Button>
+                  )}
+                </CardFooter>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

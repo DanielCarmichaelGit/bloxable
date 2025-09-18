@@ -41,6 +41,13 @@ export interface Agent {
   updated_at: string;
 }
 
+export interface UsageTier {
+  id: string;
+  minUsage: number;
+  maxUsage?: number;
+  pricePerUnit: number;
+}
+
 export interface MarketplaceItem {
   id: string;
   seller_id: string;
@@ -48,23 +55,35 @@ export interface MarketplaceItem {
   description: string;
   price: number;
   is_free: boolean;
-  billing_period: "one_time" | "monthly" | "yearly" | "lifetime";
-  source_code_price?: number;
-  source_code_format?: "json" | "provided_in_chat" | "url";
-  source_code_url?: string;
+  billing_period:
+    | "one_time"
+    | "monthly"
+    | "yearly"
+    | "lifetime"
+    | "usage_based";
+  source_code_r?: number; // source_code_price
+  source_code_format?: "json" | "provided_in_chat" | "url"; // source_code_format
+  source_code_url?: string; // source_code_url
   rating: number;
   setup_time?: string;
+  installation_url?: string;
+  webhook_url?: string;
   tags: string[];
   demo_link?: string;
-  stripe_product_id?: string;
+  stripe_product?: string;
   stripe_price_id?: string;
-  stripe_customer_id?: string;
+  stripe_customer?: string;
   status: "draft" | "pending_review" | "active" | "inactive" | "rejected";
   is_public: boolean;
   created_at: string;
   updated_at: string;
   published_at?: string;
   metadata: Record<string, any>;
+  // Usage-based pricing fields (now as actual columns)
+  usage_pricing_type?: "flat_rate" | "tiered";
+  usage_tiers?: UsageTier[];
+  flat_usage_price?: number;
+  usage_test_completed?: boolean;
 }
 
 export interface ChatSession {

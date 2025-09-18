@@ -376,8 +376,10 @@ export default function SellerDashboard() {
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        <Button variant="ghost" size="sm">
-                          <Edit className="h-4 w-4" />
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link to={`/seller/edit-listing/${item.id}`}>
+                            <Edit className="h-4 w-4" />
+                          </Link>
                         </Button>
                         <Button variant="ghost" size="sm">
                           <MoreHorizontal className="h-4 w-4" />
