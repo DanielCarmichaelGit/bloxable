@@ -14,6 +14,8 @@ import {
   Search,
   Edit,
   MoreHorizontal,
+  Cog,
+  Upload,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -381,6 +383,17 @@ export default function SellerDashboard() {
                             <Edit className="h-4 w-4" />
                           </Link>
                         </Button>
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link to={`/seller/config-listing/${item.id}`}>
+                            <Cog className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                        {item.status === "draft" && (
+                          <Button variant="default" size="sm">
+                            <Upload className="h-4 w-4 mr-1" />
+                            Publish
+                          </Button>
+                        )}
                         <Button variant="ghost" size="sm">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>

@@ -164,16 +164,6 @@ export default function PublishingStatus({
             <Save className="h-4 w-4" />
             {isSaving ? "Saving..." : "Save Changes"}
           </Button>
-          {formData.status === "draft" && (
-            <Button
-              onClick={onPublish}
-              disabled={isSaving || !canPublish}
-              className="w-full flex items-center gap-2"
-            >
-              <Eye className="h-4 w-4" />
-              {isSaving ? "Publishing..." : "Publish Listing"}
-            </Button>
-          )}
         </CardFooter>
       </Card>
     </div>

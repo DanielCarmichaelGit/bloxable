@@ -22,6 +22,7 @@ import AuthCallback from "@/pages/AuthCallback";
 import AuthTest from "@/pages/AuthTest";
 import MarketplaceListingWizard from "@/pages/MarketplaceListingWizard";
 import MarketplaceItemEdit from "@/pages/MarketplaceItemEdit";
+import MarketplaceItemConfig from "@/pages/MarketplaceItemConfig";
 
 function App() {
   return (
@@ -111,6 +112,14 @@ function App() {
                     element={
                       <ProtectedRoute>
                         <MarketplaceItemEdit />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/seller/config-listing/:id"
+                    element={
+                      <ProtectedRoute>
+                        <MarketplaceItemConfig />
                       </ProtectedRoute>
                     }
                   />

@@ -599,54 +599,13 @@ export default function MarketplaceItemEdit() {
     };
   }, [formData, originalItem, isSaving, handleSave]);
 
-  const handlePublish = async () => {
-    if (!originalItem || !canPublish(formData, pricingType)) return;
-
-    setIsSaving(true);
-    try {
-      const updateData = {
-        name: formData.name,
-        description: formData.description,
-        price: formData.price,
-        billing_period: formData.billing_period,
-        tags: formData.tags,
-        demo_link: formData.demo_link,
-        status: "pending_review" as const,
-        is_public: true,
-        // Usage-based pricing fields
-        usage_pricing_type: formData.usage_pricing_type,
-        usage_tiers: formData.usage_tiers,
-        flat_usage_price: formData.flat_usage_price,
-        usage_test_completed: formData.usage_test_completed,
-        // Source code fields (using actual database column names)
-        source_code_r: formData.source_code_price,
-        source_code_format: formData.source_code_format,
-        source_code_url: formData.source_code_url,
-        // Setup fields
-        setup_time: formData.setup_time,
-        installation_url: formData.installation_url,
-      };
-
-      console.log("Publishing with billing_period:", formData.billing_period);
-      console.log("Pricing type:", pricingType);
-
-      await marketplaceApi.updateItem(originalItem.id, updateData);
-      setOriginalItem({ ...originalItem, ...updateData });
-      setFormData((prev) => ({
-        ...prev,
-        ...updateData,
-        status: "pending_review",
-        is_public: true,
-      }));
-    } catch (error) {
-      console.error("Error publishing item:", error);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   const handleReturnToDashboard = () => {
     navigate("/dashboard");
+  };
+
+  // Dummy function since publish is now handled from dashboard
+  const handlePublish = () => {
+    console.log("Publish functionality moved to dashboard");
   };
 
   if (isLoading) {
@@ -659,6 +618,8 @@ export default function MarketplaceItemEdit() {
       </div>
     );
   }
+
+  const requirements = getPublishingRequirements(formData, pricingType);
 
   if (!originalItem) {
     return (
@@ -679,8 +640,6 @@ export default function MarketplaceItemEdit() {
       </div>
     );
   }
-
-  const requirements = getPublishingRequirements(formData, pricingType);
 
   return (
     <div className="min-h-screen bg-background">
@@ -762,7 +721,10 @@ export default function MarketplaceItemEdit() {
                   onPublish={handlePublish}
                   isSaving={isSaving}
                   canPublish={canPublish(formData, pricingType)}
-                  requirements={requirements}
+                  requirements={getPublishingRequirements(
+                    formData,
+                    pricingType
+                  )}
                   pricingType={pricingType}
                 />
               </div>
