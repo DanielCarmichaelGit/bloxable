@@ -21,9 +21,51 @@ import Logo from "@/components/Logo";
 import AccountSwitcher from "@/components/AccountSwitcher";
 
 interface LayoutProps {
-  children: ReactNode;
-  hideFooter?: boolean;
+  readonly children: ReactNode;
+  readonly hideFooter?: boolean;
 }
+
+// Helper function to get theme display name
+const getThemeDisplayName = (theme: string) => {
+  switch (theme) {
+    case "system":
+      return "System";
+    case "light":
+      return "Light";
+    case "dark":
+      return "Dark";
+    default:
+      return "System";
+  }
+};
+
+// Helper function to get theme icon
+const getThemeIcon = (theme: string) => {
+  switch (theme) {
+    case "system":
+      return <Monitor className="h-4 w-4" />;
+    case "light":
+      return <Sun className="h-4 w-4" />;
+    case "dark":
+      return <Moon className="h-4 w-4" />;
+    default:
+      return <Monitor className="h-4 w-4" />;
+  }
+};
+
+// Helper function to get next theme in cycle
+const getNextTheme = (currentTheme: string) => {
+  switch (currentTheme) {
+    case "light":
+      return "dark";
+    case "dark":
+      return "system";
+    case "system":
+      return "light";
+    default:
+      return "light";
+  }
+};
 
 export default function Layout({ children, hideFooter = false }: LayoutProps) {
   const { theme, setTheme } = useTheme();
@@ -93,7 +135,11 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
 
                   <div className="relative group">
                     {/* User Dropdown Trigger */}
-                    <button className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors">
+                    <button
+                      className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+                      aria-label="User menu"
+                      aria-expanded="false"
+                    >
                       <Settings className="h-4 w-4" />
                       <ChevronDown className="h-3 w-3" />
                     </button>
@@ -282,45 +328,37 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
                 >
                   Sell your workflows
                 </Link>
-                <a href="#" className="hover:text-foreground transition-colors">
+                <Link
+                  to="/privacy"
+                  className="hover:text-foreground transition-colors"
+                >
                   Privacy Policy
-                </a>
-                <a href="#" className="hover:text-foreground transition-colors">
+                </Link>
+                <Link
+                  to="/terms-and-conditions"
+                  className="hover:text-foreground transition-colors"
+                >
                   Terms of Service
-                </a>
-                <a href="#" className="hover:text-foreground transition-colors">
+                </Link>
+                <button
+                  className="hover:text-foreground transition-colors"
+                  onClick={() => {
+                    /* TODO: Implement contact modal or page */
+                  }}
+                  aria-label="Contact us"
+                >
                   Contact
-                </a>
+                </button>
                 {/* Theme Toggle */}
                 <div className="flex items-center space-x-1">
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() =>
-                      setTheme(
-                        theme === "light"
-                          ? "dark"
-                          : theme === "dark"
-                          ? "system"
-                          : "light"
-                      )
-                    }
+                    onClick={() => setTheme(getNextTheme(theme))}
                     className="h-8 w-8 p-0"
-                    title={`Current: ${
-                      theme === "system"
-                        ? "System"
-                        : theme === "light"
-                        ? "Light"
-                        : "Dark"
-                    }`}
+                    title={`Current: ${getThemeDisplayName(theme)}`}
                   >
-                    {theme === "system" ? (
-                      <Monitor className="h-4 w-4" />
-                    ) : theme === "light" ? (
-                      <Sun className="h-4 w-4" />
-                    ) : (
-                      <Moon className="h-4 w-4" />
-                    )}
+                    {getThemeIcon(theme)}
                     <span className="sr-only">Toggle theme</span>
                   </Button>
                 </div>

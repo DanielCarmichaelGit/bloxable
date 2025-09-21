@@ -85,7 +85,7 @@ export default function WorkflowCard({ workflow, index }: WorkflowCardProps) {
       initial="hidden"
       animate="visible"
     >
-      <Card className="h-full flex flex-col border-0 shadow-sm hover:shadow-md transition-shadow">
+      <Card className="h-full flex flex-col border-0 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]">
         <CardHeader>
           <div className="flex items-start justify-between mb-2">
             <CardTitle className="text-lg font-semibold line-clamp-1">
@@ -131,8 +131,8 @@ export default function WorkflowCard({ workflow, index }: WorkflowCardProps) {
           </div>
         </CardContent>
 
-        <CardFooter>
-          <Button asChild className="w-full">
+        <CardFooter className="pt-4">
+          <Button asChild className="w-full h-11 text-sm font-medium">
             <Link to={`/workflow/${workflow.id}`}>View Details</Link>
           </Button>
         </CardFooter>

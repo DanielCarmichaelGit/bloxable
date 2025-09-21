@@ -1,8 +1,6 @@
-import { useTheme } from "@/contexts/ThemeContext";
-
 interface LogoProps {
-  className?: string;
-  size?: "sm" | "md" | "lg" | "xl";
+  readonly className?: string;
+  readonly size?: "sm" | "md" | "lg" | "xl";
 }
 
 const sizeClasses = {
@@ -13,40 +11,25 @@ const sizeClasses = {
 };
 
 export default function Logo({ className = "", size = "md" }: LogoProps) {
-  const { theme } = useTheme();
-
-  // Determine which logo to use based on theme
-  const getLogoSrc = () => {
-    if (theme === "dark") {
-      return "/assets/bloxable-dark-logo.svg";
-    } else if (theme === "light") {
-      return "/assets/bloxable-dark-logo.svg";
-    } else {
-      // For system theme, we'll use CSS media queries
-      return "/assets/bloxable-dark-logo.svg";
-    }
-  };
-
-  const logoSrc = getLogoSrc();
+  // For now, using the same logo for all themes
+  // TODO: Implement proper light/dark logo variants based on theme
+  const logoSrc = "/assets/bloxable-dark-logo.svg";
   const sizeClass = sizeClasses[size];
 
   return (
     <img
       src={logoSrc}
-      alt="Bloxable.io"
+      alt="Bloxable.io - Automation Platform"
       className={`${sizeClass} ${className}`}
-      style={{
-        // For system theme, we'll use CSS to switch between logos
-        ...(theme === "system" && {
-          content: `url("/assets/bloxable-dark-logo.svg")`,
-        }),
-      }}
     />
   );
 }
 
 // Alternative approach using CSS for system theme
-export function LogoWithCSS({ className = "", size = "md" }: LogoProps) {
+export function LogoWithCSS({
+  className = "",
+  size = "md",
+}: Readonly<LogoProps>) {
   const sizeClass = sizeClasses[size];
 
   return (

@@ -15,6 +15,21 @@ import { supabase } from "@/lib/supabase";
 import { useAccount } from "@/contexts/AccountProvider";
 import Logo from "@/components/Logo";
 
+// Helper functions for better readability
+const getLoadingText = (mode: "login" | "signup") => {
+  return mode === "login" ? "Signing In..." : "Creating Account...";
+};
+
+const getButtonText = (
+  mode: "login" | "signup",
+  userType: "seller" | "buyer"
+) => {
+  if (mode === "login") {
+    return "Sign In";
+  }
+  return `Create ${userType === "seller" ? "Seller" : "Buyer"} Account`;
+};
+
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -296,19 +311,14 @@ export default function AuthModal({
                 >
                   {loading ? (
                     <div className="flex items-center space-x-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>
-                        {mode === "login"
-                          ? "Signing In..."
-                          : "Creating Account..."}
-                      </span>
+                      <div
+                        className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"
+                        aria-hidden="true"
+                      ></div>
+                      <span>{getLoadingText(mode)}</span>
                     </div>
-                  ) : mode === "login" ? (
-                    "Sign In"
                   ) : (
-                    `Create ${
-                      userType === "seller" ? "Seller" : "Buyer"
-                    } Account`
+                    getButtonText(mode, userType)
                   )}
                 </Button>
               </form>
