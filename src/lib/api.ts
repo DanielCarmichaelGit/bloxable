@@ -1,6 +1,8 @@
 // Mock API for Bloxable.io - Workflow Automation Marketplace
 // This simulates Supabase Edge Functions calls
 
+import { apiCache } from "./apiCache";
+
 export interface Workflow {
   id: string;
   title: string;
@@ -301,8 +303,14 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 export const api = {
   // Get all workflows
   async getWorkflows(): Promise<Workflow[]> {
-    await delay(300);
-    return mockWorkflows.filter((workflow) => workflow.isActive);
+    return apiCache.get(
+      "workflows_public",
+      async () => {
+        await delay(300);
+        return mockWorkflows.filter((workflow) => workflow.isActive);
+      },
+      5 * 60 * 1000 // 5 minutes cache
+    );
   },
 
   // Get workflow by ID
@@ -380,7 +388,9 @@ export const api = {
     // Simulate purchase process
     return {
       success: true,
-      orderId: `order-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      orderId: `order-${Date.now()}-${Math.random()
+        .toString(36)
+        .substring(2, 11)}`,
     };
   },
 };

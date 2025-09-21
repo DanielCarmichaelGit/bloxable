@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
+import { apiCache } from "@/lib/apiCache";
 
 const supabase = createClient(
   "https://nzbbzzenziwwxoiisjoz.supabase.co",
@@ -54,6 +55,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Clear all user data
     setUser(null);
     setSession(null);
+    // Clear API cache on logout
+    apiCache.clearAll();
   };
 
   return (

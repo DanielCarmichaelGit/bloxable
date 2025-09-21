@@ -35,8 +35,7 @@ export default function UnifiedDashboard() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      {isSeller && <SellerDashboard />}
-      {isBuyer && <BuyerDashboard />}
+      {isSeller ? <SellerDashboard /> : isBuyer ? <BuyerDashboard /> : null}
     </motion.div>
   );
 }

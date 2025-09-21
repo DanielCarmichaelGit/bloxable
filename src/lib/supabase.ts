@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { apiCache } from "./apiCache";
 
 const supabaseUrl = "https://nzbbzzenziwwxoiisjoz.supabase.co";
 const supabaseAnonKey = "sb_publishable_pXQbw4-W9-JNpB0jbtfyxA_GVkmycmU";
@@ -340,6 +341,10 @@ export const marketplaceApi = {
         return null;
       }
 
+      // Invalidate relevant caches
+      apiCache.clear("marketplace_items_public");
+      apiCache.clear(`marketplace_items_seller_${sellerId}`);
+
       return data;
     } catch (error) {
       console.error("Error creating marketplace item:", error);
@@ -349,45 +354,57 @@ export const marketplaceApi = {
 
   // Get all marketplace items (public active items)
   async getPublicItems(): Promise<MarketplaceItem[]> {
-    try {
-      const { data, error } = await supabase
-        .from("marketplace_items")
-        .select("*")
-        .eq("is_public", true)
-        .eq("status", "active")
-        .order("published_at", { ascending: false });
+    return apiCache.get(
+      "marketplace_items_public",
+      async () => {
+        try {
+          const { data, error } = await supabase
+            .from("marketplace_items")
+            .select("*")
+            .eq("is_public", true)
+            .eq("status", "active")
+            .order("published_at", { ascending: false });
 
-      if (error) {
-        console.error("Error fetching public marketplace items:", error);
-        return [];
-      }
+          if (error) {
+            console.error("Error fetching public marketplace items:", error);
+            return [];
+          }
 
-      return data || [];
-    } catch (error) {
-      console.error("Error fetching public marketplace items:", error);
-      return [];
-    }
+          return data || [];
+        } catch (error) {
+          console.error("Error fetching public marketplace items:", error);
+          return [];
+        }
+      },
+      5 * 60 * 1000 // 5 minutes cache
+    );
   },
 
   // Get marketplace items by seller
   async getItemsBySeller(sellerId: string): Promise<MarketplaceItem[]> {
-    try {
-      const { data, error } = await supabase
-        .from("marketplace_items")
-        .select("*")
-        .eq("seller_id", sellerId)
-        .order("updated_at", { ascending: false });
+    return apiCache.get(
+      `marketplace_items_seller_${sellerId}`,
+      async () => {
+        try {
+          const { data, error } = await supabase
+            .from("marketplace_items")
+            .select("*")
+            .eq("seller_id", sellerId)
+            .order("updated_at", { ascending: false });
 
-      if (error) {
-        console.error("Error fetching seller marketplace items:", error);
-        return [];
-      }
+          if (error) {
+            console.error("Error fetching seller marketplace items:", error);
+            return [];
+          }
 
-      return data || [];
-    } catch (error) {
-      console.error("Error fetching seller marketplace items:", error);
-      return [];
-    }
+          return data || [];
+        } catch (error) {
+          console.error("Error fetching seller marketplace items:", error);
+          return [];
+        }
+      },
+      2 * 60 * 1000 // 2 minutes cache for seller items
+    );
   },
 
   // Get marketplace item by ID
@@ -439,6 +456,10 @@ export const marketplaceApi = {
         return null;
       }
 
+      // Invalidate relevant caches
+      apiCache.clear("marketplace_items_public");
+      apiCache.clear(`marketplace_items_seller_${data.seller_id}`);
+
       return data;
     } catch (error) {
       console.error("Error updating marketplace item:", error);
@@ -458,6 +479,11 @@ export const marketplaceApi = {
         console.error("Error deleting marketplace item:", error);
         return false;
       }
+
+      // Invalidate all marketplace caches since we don't know the seller_id
+      apiCache.clear("marketplace_items_public");
+      // Clear all seller caches (this is a bit aggressive but ensures consistency)
+      apiCache.clearAll();
 
       return true;
     } catch (error) {
