@@ -22,7 +22,9 @@ import AuthCallback from "@/pages/AuthCallback";
 import AuthTest from "@/pages/AuthTest";
 import MarketplaceListingWizard from "@/pages/MarketplaceListingWizard";
 import MarketplaceItemEdit from "@/pages/MarketplaceItemEdit";
-import MarketplaceItemConfig from "@/pages/MarketplaceItemConfig";
+import MarketplaceItemConfig from "@/pages/MarketplaceItemConfigRefactored";
+import Privacy from "@/pages/Privacy";
+import TermsAndConditions from "@/pages/TermsAndConditions";
 
 function App() {
   return (
@@ -128,6 +130,22 @@ function App() {
                     element={
                       <Layout>
                         <UnifiedSettings />
+                      </Layout>
+                    }
+                  />
+                  <Route
+                    path="/privacy"
+                    element={
+                      <Layout>
+                        <Privacy />
+                      </Layout>
+                    }
+                  />
+                  <Route
+                    path="/terms-and-conditions"
+                    element={
+                      <Layout>
+                        <TermsAndConditions />
                       </Layout>
                     }
                   />

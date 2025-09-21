@@ -541,4 +541,68 @@ export const marketplaceApi = {
       return [];
     }
   },
+
+  // Configuration management functions
+  async saveConfiguration(
+    marketplaceItemId: string,
+    configData: any
+  ): Promise<boolean> {
+    try {
+      const { error } = await supabase.from("marketplace_item_configs").upsert({
+        marketplace_item_id: marketplaceItemId,
+        ...configData,
+      });
+
+      if (error) {
+        console.error("Error saving configuration:", error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error saving configuration:", error);
+      return false;
+    }
+  },
+
+  async getConfiguration(
+    marketplaceItemId: string
+  ): Promise<Record<string, any> | null> {
+    try {
+      const { data, error } = await supabase
+        .from("marketplace_item_configs")
+        .select("*")
+        .eq("marketplace_item_id", marketplaceItemId)
+        .single();
+
+      if (error) {
+        console.error("Error fetching configuration:", error);
+        return null;
+      }
+
+      return data;
+    } catch (error) {
+      console.error("Error fetching configuration:", error);
+      return null;
+    }
+  },
+
+  async deleteConfiguration(marketplaceItemId: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from("marketplace_item_configs")
+        .delete()
+        .eq("marketplace_item_id", marketplaceItemId);
+
+      if (error) {
+        console.error("Error deleting configuration:", error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error deleting configuration:", error);
+      return false;
+    }
+  },
 };

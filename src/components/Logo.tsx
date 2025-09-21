@@ -20,10 +20,10 @@ export default function Logo({ className = "", size = "md" }: LogoProps) {
     if (theme === "dark") {
       return "/assets/bloxable-dark-logo.svg";
     } else if (theme === "light") {
-      return "/assets/bloxable-light-logo.svg";
+      return "/assets/bloxable-dark-logo.svg";
     } else {
       // For system theme, we'll use CSS media queries
-      return "/assets/bloxable-light-logo.svg";
+      return "/assets/bloxable-dark-logo.svg";
     }
   };
 
@@ -38,7 +38,7 @@ export default function Logo({ className = "", size = "md" }: LogoProps) {
       style={{
         // For system theme, we'll use CSS to switch between logos
         ...(theme === "system" && {
-          content: `url("/assets/bloxable-light-logo.svg")`,
+          content: `url("/assets/bloxable-dark-logo.svg")`,
         }),
       }}
     />
@@ -52,7 +52,7 @@ export function LogoWithCSS({ className = "", size = "md" }: LogoProps) {
   return (
     <div className={`${sizeClass} ${className} relative`}>
       <img
-        src="/assets/bloxable-light-logo.svg"
+        src="/assets/bloxable-dark-logo.svg"
         alt="Bloxable.io"
         className="block dark:hidden w-full h-full"
       />
