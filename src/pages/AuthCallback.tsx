@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 
 export default function AuthCallback() {
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentStepLabel, setCurrentStepLabel] = useState("Initializing...");
   const [progress, setProgress] = useState(0);
@@ -17,7 +17,9 @@ export default function AuthCallback() {
     setProgress(Math.round((step / total) * 100));
 
   // Wait for Supabase to hydrate the session from the URL hash (#access_token=...)
-  const waitForSessionUser = async (): Promise<import("@supabase/supabase-js").User> => {
+  const waitForSessionUser = async (): Promise<
+    import("@supabase/supabase-js").User
+  > => {
     // 1) immediate check
     let { data } = await supabase.auth.getSession();
     if (data.session?.user) return data.session.user;
@@ -29,13 +31,18 @@ export default function AuthCallback() {
 
     // 3) single-shot listener with timeout
     return await new Promise((resolve, reject) => {
-      const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-        if ((event === "SIGNED_IN" || event === "TOKEN_REFRESHED") && session?.user) {
-          sub.subscription.unsubscribe();
-          resolve(session.user);
+      const { data: sub } = supabase.auth.onAuthStateChange(
+        (event, session) => {
+          if (
+            (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") &&
+            session?.user
+          ) {
+            sub.subscription.unsubscribe();
+            resolve(session.user);
+          }
         }
-      });
-      const t = setTimeout(async () => {
+      );
+      setTimeout(async () => {
         sub.subscription.unsubscribe();
         const { data: last } = await supabase.auth.getSession();
         if (last.session?.user) resolve(last.session.user);
@@ -57,7 +64,9 @@ export default function AuthCallback() {
       let step = 0;
 
       // 1) Buyer profile
-      step++; setStep("Creating buyer profile..."); setPct(step, total);
+      step++;
+      setStep("Creating buyer profile...");
+      setPct(step, total);
       const { data: buyerProfile, error: buyerErr } = await supabase
         .from("user_profiles")
         .insert({
@@ -72,7 +81,9 @@ export default function AuthCallback() {
       console.log("✅ Buyer profile:", buyerProfile);
 
       // 2) Seller profile
-      step++; setStep("Creating seller profile..."); setPct(step, total);
+      step++;
+      setStep("Creating seller profile...");
+      setPct(step, total);
       const { data: sellerProfile, error: sellerErr } = await supabase
         .from("user_profiles")
         .insert({
@@ -88,7 +99,9 @@ export default function AuthCallback() {
       console.log("✅ Seller profile:", sellerProfile);
 
       // 3) Buyer config
-      step++; setStep("Setting up buyer preferences..."); setPct(step, total);
+      step++;
+      setStep("Setting up buyer preferences...");
+      setPct(step, total);
       const { error: buyerCfgErr } = await supabase
         .from("buyer_configs")
         .insert({
@@ -102,7 +115,9 @@ export default function AuthCallback() {
       console.log("✅ Buyer config");
 
       // 4) Seller config
-      step++; setStep("Setting up seller preferences..."); setPct(step, total);
+      step++;
+      setStep("Setting up seller preferences...");
+      setPct(step, total);
       const { error: sellerCfgErr } = await supabase
         .from("seller_configs")
         .insert({
@@ -112,11 +127,14 @@ export default function AuthCallback() {
           notifications_enabled: true,
           email_notifications: true,
         });
-      if (sellerCfgErr) throw new Error(`Seller config: ${sellerCfgErr.message}`);
+      if (sellerCfgErr)
+        throw new Error(`Seller config: ${sellerCfgErr.message}`);
       console.log("✅ Seller config");
 
       // 5) Seller page
-      step++; setStep("Creating seller store page..."); setPct(step, total);
+      step++;
+      setStep("Creating seller store page...");
+      setPct(step, total);
       const { error: sellerPageErr } = await supabase
         .from("seller_pages")
         .insert({
@@ -126,7 +144,8 @@ export default function AuthCallback() {
           page_description: "Welcome to my store!",
           is_published: false,
         });
-      if (sellerPageErr) throw new Error(`Seller page: ${sellerPageErr.message}`);
+      if (sellerPageErr)
+        throw new Error(`Seller page: ${sellerPageErr.message}`);
       console.log("✅ Seller page");
 
       setStep("Setup complete!");
@@ -148,7 +167,9 @@ export default function AuthCallback() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
-          <h2 className="text-xl font-semibold mb-2">Email Confirmation Failed</h2>
+          <h2 className="text-xl font-semibold mb-2">
+            Email Confirmation Failed
+          </h2>
           <p className="mb-6">{error}</p>
           <button
             onClick={() => window.location.reload()}

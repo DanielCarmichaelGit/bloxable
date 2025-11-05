@@ -131,7 +131,7 @@ export default function MarketplaceItemConfig() {
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>(
     []
   );
-  const [hasLoaded, setHasLoaded] = useState(false);
+  const [, setHasLoaded] = useState(false);
   const [webhookGenerated, setWebhookGenerated] = useState(false);
   const [isGeneratingWebhook, setIsGeneratingWebhook] = useState(false);
   const [isLoading, setIsLoading] = useState(false);

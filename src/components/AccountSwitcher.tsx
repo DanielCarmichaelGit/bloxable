@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { useAccount } from "@/contexts/AccountProvider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,7 @@ export default function AccountSwitcher() {
     availableProfiles,
     switchProfile,
     isSeller,
-    isBuyer,
+    isBuyer: _isBuyer,
   } = useAccount();
   const [isOpen, setIsOpen] = useState(false);
 

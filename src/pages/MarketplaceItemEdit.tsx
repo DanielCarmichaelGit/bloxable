@@ -619,8 +619,6 @@ export default function MarketplaceItemEdit() {
     );
   }
 
-  const requirements = getPublishingRequirements(formData, pricingType);
-
   if (!originalItem) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">

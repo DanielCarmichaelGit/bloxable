@@ -9,7 +9,7 @@ import {
 import { Button } from "../ui/button";
 import { Label } from "../ui/label";
 import { Badge } from "../ui/badge";
-import { Save, Eye, CheckCircle, X } from "lucide-react";
+import { Save, CheckCircle, X } from "lucide-react";
 
 interface MarketplaceItemFormData {
   status: "draft" | "pending_review" | "active" | "inactive" | "rejected";
@@ -35,9 +35,9 @@ interface PublishingStatusProps {
 export default function PublishingStatus({
   formData,
   onSave,
-  onPublish,
+  onPublish: _onPublish,
   isSaving,
-  canPublish,
+  canPublish: _canPublish,
   requirements,
   pricingType,
 }: PublishingStatusProps) {
