@@ -5,19 +5,13 @@ import { Eye, EyeOff, ArrowLeft, CheckCircle, User, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { supabase, getAuthRedirectUrl } from "@/lib/supabase";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAccount } from "@/contexts/AccountProvider";
 import Logo from "@/components/Logo";
 
 export default function Auth() {
-  const { createProfile } = useAuth();
+  const { createProfile } = useAccount();
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -38,6 +32,61 @@ export default function Auth() {
     setError("");
   };
 
+  const handleLogin = async () => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email: formData.email,
+      password: formData.password,
+    });
+
+    if (error) throw error;
+
+    // Redirect based on user type or default dashboard
+    if (userType === "seller") {
+      navigate("/seller/dashboard");
+    } else {
+      navigate("/dashboard");
+    }
+  };
+
+  const handleSignup = async () => {
+    if (formData.password !== formData.confirmPassword) {
+      throw new Error("Passwords don't match");
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email: formData.email,
+      password: formData.password,
+      options: {
+        data: {
+          full_name: formData.fullName,
+        },
+        emailRedirectTo: `${getAuthRedirectUrl()}?redirect=${encodeURIComponent(
+          redirectTo
+        )}`,
+      },
+    });
+
+    if (error) throw error;
+
+    if (data.user) {
+      if (!data.user.email_confirmed_at) {
+        // Show success message for email confirmation
+        setError("success");
+        // Both profiles will be created after email confirmation
+      } else {
+        // Create both profiles immediately if email is already confirmed
+        await createBothProfiles(formData.fullName);
+
+        // Redirect based on user type
+        if (userType === "seller") {
+          navigate("/seller/dashboard");
+        } else {
+          navigate("/dashboard");
+        }
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -45,58 +94,9 @@ export default function Auth() {
 
     try {
       if (isLogin) {
-        // Login
-        const { error } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-        });
-
-        if (error) throw error;
-
-        // Redirect based on user type or default dashboard
-        if (userType === "seller") {
-          navigate("/seller/dashboard");
-        } else {
-          navigate("/dashboard");
-        }
+        await handleLogin();
       } else {
-        // Sign up
-        if (formData.password !== formData.confirmPassword) {
-          throw new Error("Passwords don't match");
-        }
-
-        const { data, error } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            data: {
-              full_name: formData.fullName,
-            },
-            emailRedirectTo: `${getAuthRedirectUrl()}?redirect=${encodeURIComponent(
-              redirectTo
-            )}`,
-          },
-        });
-
-        if (error) throw error;
-
-        if (data.user) {
-          if (!data.user.email_confirmed_at) {
-            // Show success message for email confirmation
-            setError("success");
-            // Both profiles will be created after email confirmation
-          } else {
-            // Create both profiles immediately if email is already confirmed
-            await createBothProfiles(formData.fullName);
-
-            // Redirect based on user type
-            if (userType === "seller") {
-              navigate("/seller/dashboard");
-            } else {
-              navigate("/dashboard");
-            }
-          }
-        }
+        await handleSignup();
       }
     } catch (error: any) {
       setError(error.message || "An error occurred. Please try again.");
@@ -127,21 +127,40 @@ export default function Auth() {
   };
 
   const getPageTitle = () => {
-    if (isLogin) {
-      return userType === "seller" ? "Welcome Back, Seller" : "Welcome Back";
-    }
-    return userType === "seller" ? "Join as a Seller" : "Create Your Account";
+    const titles = {
+      login: {
+        seller: "Welcome Back, Seller",
+        buyer: "Welcome Back",
+      },
+      signup: {
+        seller: "Join as a Seller",
+        buyer: "Create Your Account",
+      },
+    };
+    return titles[isLogin ? "login" : "signup"][userType as "seller" | "buyer"];
   };
 
   const getPageDescription = () => {
-    if (isLogin) {
-      return userType === "seller"
-        ? "Sign in to access your seller dashboard"
-        : "Sign in to access your workflows";
+    const descriptions = {
+      login: {
+        seller: "Sign in to access your seller dashboard",
+        buyer: "Sign in to access your workflows",
+      },
+      signup: {
+        seller: "Create your account and start selling workflows",
+        buyer: "Create your account and start automating",
+      },
+    };
+    return descriptions[isLogin ? "login" : "signup"][
+      userType as "seller" | "buyer"
+    ];
+  };
+
+  const getButtonText = () => {
+    if (loading) {
+      return isLogin ? "Signing In..." : "Creating Account...";
     }
-    return userType === "seller"
-      ? "Create your account and start selling workflows"
-      : "Create your account and start automating";
+    return isLogin ? "Sign In" : "Create Account";
   };
 
   const getBenefits = () => {
@@ -319,14 +338,10 @@ export default function Auth() {
                     {loading ? (
                       <div className="flex items-center space-x-2">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span>
-                          {isLogin ? "Signing In..." : "Creating Account..."}
-                        </span>
+                        <span>{getButtonText()}</span>
                       </div>
-                    ) : isLogin ? (
-                      "Sign In"
                     ) : (
-                      "Create Account"
+                      getButtonText()
                     )}
                   </Button>
                 </form>
@@ -370,8 +385,8 @@ export default function Auth() {
             </p>
 
             <div className="space-y-6">
-              {getBenefits().map((benefit, index) => (
-                <div key={index} className="flex items-start space-x-4">
+              {getBenefits().map((benefit) => (
+                <div key={benefit.title} className="flex items-start space-x-4">
                   <div className="flex-shrink-0">
                     <div className="w-8 h-8 bg-primary/10 rounded-lg flex items-center justify-center">
                       <benefit.icon className="h-4 w-4 text-primary" />

@@ -31,11 +31,11 @@ const getButtonText = (
 };
 
 interface AuthModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  defaultMode?: "login" | "signup";
-  defaultUserType?: "seller" | "buyer";
-  onSuccess?: () => void;
+  readonly isOpen: boolean;
+  readonly onClose: () => void;
+  readonly defaultMode?: "login" | "signup";
+  readonly defaultUserType?: "seller" | "buyer";
+  readonly onSuccess?: () => void;
 }
 
 export default function AuthModal({
@@ -63,6 +63,56 @@ export default function AuthModal({
     setError("");
   };
 
+  const handleLogin = async () => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email: formData.email,
+      password: formData.password,
+    });
+
+    if (error) throw error;
+
+    onSuccess?.();
+    onClose();
+  };
+
+  const handleSignup = async () => {
+    if (formData.password !== formData.confirmPassword) {
+      throw new Error("Passwords don't match");
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email: formData.email,
+      password: formData.password,
+      options: {
+        data: {
+          full_name: formData.fullName,
+        },
+      },
+    });
+
+    if (error) throw error;
+
+    if (data.user) {
+      // Create the appropriate profile
+      const success = await createProfile(
+        userType,
+        formData.fullName,
+        userType === "seller" ? { company_name: "" } : {}
+      );
+
+      if (!success) {
+        throw new Error("Failed to create user profile");
+      }
+
+      if (!data.user.email_confirmed_at) {
+        setError("success");
+      } else {
+        onSuccess?.();
+        onClose();
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -70,53 +120,9 @@ export default function AuthModal({
 
     try {
       if (mode === "login") {
-        // Login
-        const { error } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-        });
-
-        if (error) throw error;
-
-        onSuccess?.();
-        onClose();
+        await handleLogin();
       } else {
-        // Sign up
-        if (formData.password !== formData.confirmPassword) {
-          throw new Error("Passwords don't match");
-        }
-
-        const { data, error } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            data: {
-              full_name: formData.fullName,
-            },
-          },
-        });
-
-        if (error) throw error;
-
-        if (data.user) {
-          // Create the appropriate profile
-          const success = await createProfile(
-            userType,
-            formData.fullName,
-            userType === "seller" ? { company_name: "" } : {}
-          );
-
-          if (!success) {
-            throw new Error("Failed to create user profile");
-          }
-
-          if (!data.user.email_confirmed_at) {
-            setError("success");
-          } else {
-            onSuccess?.();
-            onClose();
-          }
-        }
+        await handleSignup();
       }
     } catch (error: any) {
       setError(error.message || "An error occurred. Please try again.");

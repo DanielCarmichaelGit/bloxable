@@ -14,12 +14,12 @@ import { Badge } from "@/components/ui/badge";
 import { type Workflow } from "@/lib/api";
 
 interface WorkflowCardProps {
-  workflow: Workflow;
-  index: number;
+  readonly workflow: Workflow;
+  readonly index: number;
 }
 
 interface SetupTimePillProps {
-  setupTime: string;
+  readonly setupTime: string;
 }
 
 function SetupTimePill({ setupTime }: SetupTimePillProps) {

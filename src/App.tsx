@@ -9,7 +9,6 @@ import Layout from "@/components/Layout";
 import AgentLayout from "@/components/AgentLayout";
 import Home from "@/pages/Home";
 import UnifiedDashboard from "@/pages/UnifiedDashboard";
-import Marketplace from "@/pages/Marketplace";
 import Workflow from "@/pages/Workflow";
 import SellerDashboard from "@/pages/SellerDashboard";
 import SellerInfo from "@/pages/SellerInfo";
@@ -54,14 +53,6 @@ function App() {
                           <UnifiedDashboard />
                         </Layout>
                       </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/marketplace"
-                    element={
-                      <Layout>
-                        <Marketplace />
-                      </Layout>
                     }
                   />
                   <Route

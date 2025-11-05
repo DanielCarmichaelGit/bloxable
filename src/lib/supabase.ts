@@ -96,6 +96,18 @@ export interface ChatSession {
   updated_at: string;
 }
 
+export interface ContactSubmission {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  company_name?: string;
+  message: string;
+  status: "new" | "read" | "replied" | "archived";
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ChatMessage {
   id: string;
   session_id: string;
@@ -574,9 +586,24 @@ export const marketplaceApi = {
     configData: any
   ): Promise<boolean> {
     try {
-      const { error } = await supabase.from("marketplace_item_configs").upsert({
-        marketplace_item_id: marketplaceItemId,
-        ...configData,
+      // Use the secure upsert function that handles RLS properly
+      const { error } = await supabase.rpc("upsert_marketplace_item_config", {
+        p_marketplace_item_id: marketplaceItemId,
+        p_platform: configData.platform || "n8n",
+        p_trigger_type: configData.trigger_type || "manual",
+        p_trigger_config: configData.trigger_config || {},
+        p_connection_keys: configData.connection_keys || [],
+        p_environment_variables: configData.environment_variables || [],
+        p_reporting_webhook: configData.reporting_webhook || null,
+        p_execution_timeout: configData.execution_timeout || 300,
+        p_retry_config: configData.retry_config || {
+          max_retries: 3,
+          retry_delay: 1000,
+          exponential_backoff: true,
+          debounce_enabled: false,
+          debounce_value: 1,
+          debounce_unit: "minutes",
+        },
       });
 
       if (error) {
@@ -629,6 +656,169 @@ export const marketplaceApi = {
     } catch (error) {
       console.error("Error deleting configuration:", error);
       return false;
+    }
+  },
+
+  // Generate reporting webhook for new configurations
+  async generateReportingWebhook(
+    marketplaceItemId: string,
+    ownerUserId: string
+  ): Promise<string | null> {
+    console.log("🚀 Starting webhook generation...");
+    console.log("Marketplace Item ID:", marketplaceItemId);
+    console.log("Owner User ID:", ownerUserId);
+
+    try {
+      const payload = {
+        marketplace_item_id: marketplaceItemId,
+        owner_user_id: ownerUserId,
+      };
+
+      console.log("📤 Sending payload to n8n webhook:", payload);
+
+      const response = await fetch(
+        "https://daniel-testing.app.n8n.cloud/webhook/generate-token",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      console.log("📥 Response status:", response.status);
+      console.log(
+        "📥 Response headers:",
+        Object.fromEntries(response.headers.entries())
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(
+          "❌ Failed to generate reporting webhook:",
+          response.status,
+          errorText
+        );
+        return null;
+      }
+
+      const data = await response.json();
+      console.log("📥 Response data:", data);
+
+      const webhookUrl =
+        data.webhook_url ||
+        data.url ||
+        data.webhookUrl ||
+        data.reporting_webhook;
+      console.log("🔗 Extracted webhook URL:", webhookUrl);
+
+      return webhookUrl || null;
+    } catch (error) {
+      console.error("❌ Error generating reporting webhook:", error);
+      return null;
+    }
+  },
+};
+
+// Contact Form API functions
+export const contactApi = {
+  // Submit a new contact form
+  async submitContactForm(
+    data: Omit<ContactSubmission, "id" | "status" | "created_at" | "updated_at">
+  ): Promise<ContactSubmission | null> {
+    try {
+      const { data: submission, error } = await supabase
+        .from("contact_submissions")
+        .insert([
+          {
+            name: data.name,
+            email: data.email,
+            phone: data.phone,
+            company_name: data.company_name || null,
+            message: data.message,
+            status: "new",
+          },
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error submitting contact form:", error);
+        throw error;
+      }
+
+      console.log("✅ Contact form submitted successfully:", submission);
+      return submission;
+    } catch (error) {
+      console.error("❌ Error submitting contact form:", error);
+      return null;
+    }
+  },
+
+  // Get all contact submissions (for admin dashboard)
+  async getAllSubmissions(): Promise<ContactSubmission[]> {
+    try {
+      const { data, error } = await supabase
+        .from("contact_submissions")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error fetching contact submissions:", error);
+        throw error;
+      }
+
+      return data || [];
+    } catch (error) {
+      console.error("❌ Error fetching contact submissions:", error);
+      return [];
+    }
+  },
+
+  // Get submission by ID
+  async getSubmissionById(id: string): Promise<ContactSubmission | null> {
+    try {
+      const { data, error } = await supabase
+        .from("contact_submissions")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error) {
+        console.error("Error fetching contact submission:", error);
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      console.error("❌ Error fetching contact submission:", error);
+      return null;
+    }
+  },
+
+  // Update submission status
+  async updateSubmissionStatus(
+    id: string,
+    status: ContactSubmission["status"]
+  ): Promise<ContactSubmission | null> {
+    try {
+      const { data, error } = await supabase
+        .from("contact_submissions")
+        .update({ status })
+        .eq("id", id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error updating contact submission:", error);
+        throw error;
+      }
+
+      return data;
+    } catch (error) {
+      console.error("❌ Error updating contact submission:", error);
+      return null;
     }
   },
 };

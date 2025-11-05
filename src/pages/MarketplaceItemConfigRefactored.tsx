@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { marketplaceApi } from "../lib/supabase";
@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "../components/ui/card";
 import { Home, Settings } from "lucide-react";
+import { useToast, ToastContainer } from "../components/ui/toast";
 
 // Import subcomponents
 import WebhookConfiguration from "../components/marketplace/config/WebhookConfiguration";
@@ -89,6 +90,12 @@ export default function MarketplaceItemConfig() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const {
+    success: showSuccess,
+    error: showError,
+    toasts,
+    removeToast,
+  } = useToast();
 
   const [originalConfig, setOriginalConfig] =
     useState<WorkflowConfigData | null>(null);
@@ -125,12 +132,27 @@ export default function MarketplaceItemConfig() {
     []
   );
   const [hasLoaded, setHasLoaded] = useState(false);
+  const [webhookGenerated, setWebhookGenerated] = useState(false);
+  const [isGeneratingWebhook, setIsGeneratingWebhook] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const hasLoadedRef = useRef(false);
 
-  // Load configuration data
+  // Load configuration data - ONLY ONCE using ref
   useEffect(() => {
-    if (!id || !user || hasLoaded) return;
+    console.log(
+      "🚀 useEffect triggered - id:",
+      id,
+      "user:",
+      user?.id,
+      "hasLoadedRef:",
+      hasLoadedRef.current,
+      "isLoading:",
+      isLoading
+    );
+    if (!id || !user || hasLoadedRef.current || isLoading) return;
 
     const loadConfig = async () => {
+      setIsLoading(true);
       try {
         const item = await marketplaceApi.getItemById(id);
         if (item) {
@@ -167,10 +189,49 @@ export default function MarketplaceItemConfig() {
               environment_variables: existingConfig.environment_variables || [],
             };
 
+            // Generate webhook if none exists and save to database
+            if (
+              !configData.reporting_webhook &&
+              !webhookGenerated &&
+              !isGeneratingWebhook
+            ) {
+              console.log("🔄 No existing webhook found, generating one...");
+              setWebhookGenerated(true);
+              setIsGeneratingWebhook(true);
+              try {
+                const reportingWebhook =
+                  await marketplaceApi.generateReportingWebhook(id, user.id);
+                if (reportingWebhook) {
+                  configData.reporting_webhook = reportingWebhook;
+                  console.log(
+                    "✅ Generated reporting webhook for existing config:",
+                    reportingWebhook
+                  );
+
+                  // Save the updated config to database immediately
+                  await marketplaceApi.saveConfiguration(id, configData);
+                  console.log("💾 Saved webhook to database");
+
+                  // Update UI state immediately
+                  setConfigData(configData);
+                  setOriginalConfig(configData);
+                  console.log("🎨 Updated UI with webhook:", reportingWebhook);
+                }
+              } catch (error) {
+                console.error(
+                  "❌ Error generating webhook for existing config:",
+                  error
+                );
+                setWebhookGenerated(false); // Reset on error so it can try again
+              } finally {
+                setIsGeneratingWebhook(false);
+              }
+            }
+
             setOriginalConfig(configData);
             setConfigData(configData);
           } else {
-            // Create default configuration
+            // Create default configuration and generate reporting webhook
             const defaultConfig: WorkflowConfigData = {
               platform: "n8n",
               trigger_type: "manual",
@@ -199,22 +260,68 @@ export default function MarketplaceItemConfig() {
               environment_variables: [],
             };
 
+            // Generate reporting webhook for new configuration and save to database
+            if (!webhookGenerated && !isGeneratingWebhook) {
+              console.log(
+                "Generating reporting webhook for marketplace item:",
+                id,
+                "user:",
+                user.id
+              );
+              setWebhookGenerated(true);
+              setIsGeneratingWebhook(true);
+              try {
+                const reportingWebhook =
+                  await marketplaceApi.generateReportingWebhook(id, user.id);
+                console.log("Webhook generation response:", reportingWebhook);
+                if (reportingWebhook) {
+                  defaultConfig.reporting_webhook = reportingWebhook;
+                  console.log(
+                    "✅ Generated reporting webhook:",
+                    reportingWebhook
+                  );
+
+                  // Save the new config with webhook to database immediately
+                  await marketplaceApi.saveConfiguration(id, defaultConfig);
+                  console.log("💾 Saved new config with webhook to database");
+
+                  // Update UI state immediately
+                  setConfigData(defaultConfig);
+                  setOriginalConfig(defaultConfig);
+                  console.log("🎨 Updated UI with webhook:", reportingWebhook);
+                } else {
+                  console.warn(
+                    "❌ Failed to generate reporting webhook - no URL returned"
+                  );
+                  setWebhookGenerated(false); // Reset on failure
+                }
+              } catch (error) {
+                console.error("❌ Error generating reporting webhook:", error);
+                setWebhookGenerated(false); // Reset on error
+              } finally {
+                setIsGeneratingWebhook(false);
+              }
+            }
+
             setOriginalConfig(defaultConfig);
             setConfigData(defaultConfig);
           }
 
           setHasLoaded(true);
+          hasLoadedRef.current = true; // Set ref to prevent future runs
         }
       } catch (error) {
         console.error("Error loading configuration:", error);
         setErrors({
           general: "Failed to load configuration. Please try again.",
         });
+      } finally {
+        setIsLoading(false);
       }
     };
 
     loadConfig();
-  }, [id, user, hasLoaded]);
+  }, [id, user]); // Only depends on id and user - ref prevents multiple runs
 
   const handleInputChange = (field: string, value: any) => {
     setConfigData((prev) => ({
@@ -303,12 +410,19 @@ export default function MarketplaceItemConfig() {
         setOriginalConfig(configData);
         setErrors({});
         setValidationErrors([]);
-        // Show success message (you could add a toast notification here)
+        showSuccess(
+          "Configuration Saved",
+          "Your workflow configuration has been saved successfully!"
+        );
         console.log("Configuration saved successfully!");
       } else {
         setErrors({
           general: "Failed to save configuration. Please try again.",
         });
+        showError(
+          "Save Failed",
+          "Failed to save configuration. Please try again."
+        );
       }
     } catch (error) {
       console.error("Error saving configuration:", error);
@@ -446,6 +560,7 @@ export default function MarketplaceItemConfig() {
           </div>
         </div>
       </div>
+      <ToastContainer toasts={toasts} onClose={removeToast} />
     </div>
   );
 }

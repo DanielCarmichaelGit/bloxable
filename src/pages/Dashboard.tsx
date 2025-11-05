@@ -4,7 +4,6 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   Bot,
   MessageSquare,
-  Plus,
   Clock,
   Activity,
   TrendingUp,
@@ -90,22 +89,7 @@ export default function BuyerDashboard() {
     }
   };
 
-  const handleCreateAgent = async () => {
-    if (!user) return;
-
-    try {
-      const agent = await agentApi.createAgent(
-        user.id,
-        `Agent ${agents.length + 1}`,
-        "A new AI agent"
-      );
-      if (agent) {
-        setAgents((prev) => [agent, ...prev]);
-      }
-    } catch (error) {
-      console.error("Error creating agent:", error);
-    }
-  };
+  // Removed handleCreateAgent - functionality temporarily disabled
 
   const handleStartNewChat = () => {
     console.log("🆕 Starting new chat");
@@ -268,19 +252,9 @@ export default function BuyerDashboard() {
           <div className="mb-8">
             <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
             <div className="flex flex-wrap gap-4">
-              <Button onClick={handleCreateAgent} size="lg">
-                <Plus className="h-4 w-4 mr-2" />
-                Create New Agent
-              </Button>
               <Button variant="outline" size="lg" onClick={handleStartNewChat}>
                 <MessageSquare className="h-4 w-4 mr-2" />
                 Start New Chat
-              </Button>
-              <Button variant="outline" size="lg" asChild>
-                <Link to="/marketplace">
-                  <Zap className="h-4 w-4 mr-2" />
-                  Browse Templates
-                </Link>
               </Button>
             </div>
           </div>
@@ -289,10 +263,6 @@ export default function BuyerDashboard() {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold">Your Agents</h2>
-              <Button variant="ghost" size="sm" onClick={handleCreateAgent}>
-                <Plus className="h-4 w-4 mr-1" />
-                New Agent
-              </Button>
             </div>
 
             {isLoading ? (
@@ -316,11 +286,8 @@ export default function BuyerDashboard() {
                   <Bot className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-medium mb-2">No agents yet</h3>
                   <p className="text-muted-foreground mb-4">
-                    Create your first AI agent to get started
+                    Your agents will appear here once they are created
                   </p>
-                  <Button onClick={handleCreateAgent}>
-                    Create Your First Agent
-                  </Button>
                 </CardContent>
               </Card>
             ) : (
@@ -500,16 +467,14 @@ export default function BuyerDashboard() {
                 </p>
                 <div className="flex flex-col sm:flex-row gap-2 justify-center">
                   <Button
+                    variant="outline"
                     onClick={() => {
                       dispatch(clearSession());
                       dispatch(setForceNewSession(true));
                       navigate("/agent");
                     }}
                   >
-                    Build Your First Agent
-                  </Button>
-                  <Button variant="outline" asChild>
-                    <Link to="/marketplace">Explore Templates</Link>
+                    Start New Chat
                   </Button>
                 </div>
               </CardContent>

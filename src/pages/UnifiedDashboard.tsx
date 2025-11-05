@@ -29,13 +29,23 @@ export default function UnifiedDashboard() {
     );
   }
 
+  const renderDashboard = () => {
+    if (isSeller) {
+      return <SellerDashboard />;
+    }
+    if (isBuyer) {
+      return <BuyerDashboard />;
+    }
+    return null;
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      {isSeller ? <SellerDashboard /> : isBuyer ? <BuyerDashboard /> : null}
+      {renderDashboard()}
     </motion.div>
   );
 }

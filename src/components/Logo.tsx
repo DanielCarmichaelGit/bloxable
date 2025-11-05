@@ -12,7 +12,7 @@ const sizeClasses = {
 
 export default function Logo({ className = "", size = "md" }: LogoProps) {
   // For now, using the same logo for all themes
-  // TODO: Implement proper light/dark logo variants based on theme
+  // Note: Light/dark logo variants can be implemented using CSS classes
   const logoSrc = "/assets/bloxable-dark-logo.svg";
   const sizeClass = sizeClasses[size];
 

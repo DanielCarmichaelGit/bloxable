@@ -1,6 +1,6 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { AppDispatch, RootState } from "@/store";
+import { AppDispatch } from "@/store";
 import {
   initializeAuth,
   handleAuthChange,
@@ -46,7 +46,11 @@ export interface AuthContextType {
 
 const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 
-export function ReduxAuthProvider({ children }: { children: React.ReactNode }) {
+export function ReduxAuthProvider({
+  children,
+}: {
+  readonly children: React.ReactNode;
+}) {
   const dispatch = useDispatch<AppDispatch>();
 
   const user = useSelector(selectUser);
@@ -58,6 +62,28 @@ export function ReduxAuthProvider({ children }: { children: React.ReactNode }) {
   const isSeller = useSelector(selectIsSeller);
   const isBuyer = useSelector(selectIsBuyer);
   const error = useSelector(selectError);
+
+  const createBuyerProfile = async (userId: string, fullName?: string) => {
+    const { error } = await supabase.from("user_profiles").insert({
+      user_id: userId,
+      profile_type: "buyer",
+      full_name: fullName,
+      preferences: {},
+      is_active: true,
+    });
+    return !error;
+  };
+
+  const createSellerProfile = async (userId: string, fullName?: string) => {
+    const { error } = await supabase.from("user_profiles").insert({
+      user_id: userId,
+      profile_type: "seller",
+      full_name: fullName,
+      company_name: "",
+      is_active: false,
+    });
+    return !error;
+  };
 
   // Initialize auth on mount
   useEffect(() => {
@@ -91,30 +117,14 @@ export function ReduxAuthProvider({ children }: { children: React.ReactNode }) {
               );
 
               // Create both profiles
-              const createBuyerProfile = async () => {
-                const { error } = await supabase.from("user_profiles").insert({
-                  user_id: session.user.id,
-                  profile_type: "buyer",
-                  full_name: session.user.user_metadata?.full_name,
-                  preferences: {},
-                  is_active: true,
-                });
-                return !error;
-              };
-
-              const createSellerProfile = async () => {
-                const { error } = await supabase.from("user_profiles").insert({
-                  user_id: session.user.id,
-                  profile_type: "seller",
-                  full_name: session.user.user_metadata?.full_name,
-                  company_name: "",
-                  is_active: false,
-                });
-                return !error;
-              };
-
-              const buyerSuccess = await createBuyerProfile();
-              const sellerSuccess = await createSellerProfile();
+              const buyerSuccess = await createBuyerProfile(
+                session.user.id,
+                session.user.user_metadata?.full_name
+              );
+              const sellerSuccess = await createSellerProfile(
+                session.user.id,
+                session.user.user_metadata?.full_name
+              );
 
               if (buyerSuccess && sellerSuccess) {
                 console.log("Both profiles created successfully");
@@ -170,20 +180,36 @@ export function ReduxAuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const contextValue: AuthContextType = {
-    user,
-    session,
-    loading,
-    signOut: signOutHandler,
-    currentProfile,
-    availableProfiles,
-    switchProfile: switchProfileHandler,
-    createProfile: createProfileHandler,
-    isSeller,
-    isBuyer,
-    refreshProfiles,
-    error,
-  };
+  const contextValue: AuthContextType = useMemo(
+    () => ({
+      user,
+      session,
+      loading,
+      signOut: signOutHandler,
+      currentProfile,
+      availableProfiles,
+      switchProfile: switchProfileHandler,
+      createProfile: createProfileHandler,
+      isSeller,
+      isBuyer,
+      refreshProfiles,
+      error,
+    }),
+    [
+      user,
+      session,
+      loading,
+      signOutHandler,
+      currentProfile,
+      availableProfiles,
+      switchProfileHandler,
+      createProfileHandler,
+      isSeller,
+      isBuyer,
+      refreshProfiles,
+      error,
+    ]
+  );
 
   return (
     <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>

@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch } from "@/store";
 import {
@@ -35,7 +35,11 @@ const AccountContext = React.createContext<AccountContextType | undefined>(
   undefined
 );
 
-export function AccountProvider({ children }: { children: React.ReactNode }) {
+export function AccountProvider({
+  children,
+}: {
+  readonly children: React.ReactNode;
+}) {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useAuth();
 
@@ -90,17 +94,30 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const contextValue: AccountContextType = {
-    currentProfile,
-    availableProfiles,
-    switchProfile: switchProfileHandler,
-    createProfile: createProfileHandler,
-    isSeller,
-    isBuyer,
-    loading,
-    error,
-    refreshProfiles,
-  };
+  const contextValue: AccountContextType = useMemo(
+    () => ({
+      currentProfile,
+      availableProfiles,
+      switchProfile: switchProfileHandler,
+      createProfile: createProfileHandler,
+      isSeller,
+      isBuyer,
+      loading,
+      error,
+      refreshProfiles,
+    }),
+    [
+      currentProfile,
+      availableProfiles,
+      switchProfileHandler,
+      createProfileHandler,
+      isSeller,
+      isBuyer,
+      loading,
+      error,
+      refreshProfiles,
+    ]
+  );
 
   return (
     <AccountContext.Provider value={contextValue}>

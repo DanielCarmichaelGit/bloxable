@@ -4,8 +4,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Moon,
   Sun,
-  Home,
-  Store,
   MessageCircle,
   LogOut,
   Monitor,
@@ -76,14 +74,18 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
 
   // Simple navigation based on auth state
   const navigation = user
-    ? [
-        { name: "Dashboard", href: "/dashboard", icon: Monitor },
-        { name: "Marketplace", href: "/marketplace", icon: Store },
-      ]
+    ? [{ name: "Dashboard", href: "/dashboard", icon: Monitor }]
     : [
-        { name: "Home", href: "/", icon: Home },
-        { name: "Marketplace", href: "/marketplace", icon: Store },
+        { name: "Home", href: "/", icon: null },
+        { name: "Integrations", href: "/#integrations", icon: null },
+        { name: "Pricing", href: "/#pricing", icon: null },
+        { name: "Solutions", href: "/#solutions", icon: null },
       ];
+
+  // Contact button separate - always on the right
+  const contactButton = user
+    ? null
+    : { name: "Contact", href: "/#contact", icon: MessageCircle };
 
   // Handle sign out with redirect to home
   const handleSignOut = async () => {
@@ -94,8 +96,8 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Navigation */}
-      <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+      <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 overflow-visible">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="flex h-16 items-center justify-between">
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-2">
@@ -108,26 +110,104 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
             {/* Navigation Links */}
             <div className="hidden md:flex items-center space-x-8">
               {navigation.map((item) => {
-                const isActive = location.pathname === item.href;
+                const isActive =
+                  location.pathname === item.href ||
+                  (item.href.startsWith("#") && location.hash === item.href);
+                const isAnchor = item.href.startsWith("#");
+
+                if (isAnchor) {
+                  return (
+                    <a
+                      key={item.name}
+                      href={item.href}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        const targetId = item.href.replace("#", "");
+
+                        // If not on home page, navigate to home with hash
+                        if (location.pathname === "/") {
+                          // Already on home page, update hash and scroll
+                          globalThis.history.pushState(null, "", item.href);
+                          const element = document.getElementById(targetId);
+                          if (element) {
+                            element.scrollIntoView({
+                              behavior: "smooth",
+                              block: "start",
+                            });
+                          }
+                        } else {
+                          navigate(`/${item.href}`, { replace: false });
+                        }
+                      }}
+                      className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                        isActive
+                          ? "text-brand bg-brand/10"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {item.name}
+                    </a>
+                  );
+                }
+
                 return (
                   <Link
                     key={item.name}
                     to={item.href}
-                    className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                       isActive
-                        ? "text-primary bg-primary/10"
-                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                        ? "text-brand bg-brand/10"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
                     }`}
                   >
-                    <item.icon className="h-4 w-4" />
-                    <span>{item.name}</span>
+                    {item.name}
                   </Link>
                 );
               })}
             </div>
 
-            {/* User Menu */}
+            {/* Right side - Contact button and User Menu */}
             <div className="flex items-center space-x-4">
+              {/* Contact Button - Desktop */}
+              {contactButton && (
+                <div className="hidden md:block">
+                  <a
+                    href={contactButton.href}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const targetId = contactButton.href.replace("#", "");
+
+                      // If not on home page, navigate to home with hash
+                      if (location.pathname === "/") {
+                        // Already on home page, update hash and scroll
+                        globalThis.history.pushState(
+                          null,
+                          "",
+                          contactButton.href
+                        );
+                        const element = document.getElementById(targetId);
+                        if (element) {
+                          element.scrollIntoView({
+                            behavior: "smooth",
+                            block: "start",
+                          });
+                        }
+                      } else {
+                        navigate(`/${contactButton.href}`, { replace: false });
+                      }
+                    }}
+                    className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      location.hash === contactButton.href
+                        ? "text-brand bg-brand/10"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <contactButton.icon className="h-4 w-4" />
+                    <span>{contactButton.name}</span>
+                  </a>
+                </div>
+              )}
+
               {user ? (
                 <>
                   {/* Account Switcher */}
@@ -175,21 +255,7 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
                     </div>
                   </div>
                 </>
-              ) : (
-                import.meta.env.VITE_SHOW_AI_FEATURES === "true" && (
-                  <Button
-                    variant="default"
-                    size="sm"
-                    className="hidden md:flex items-center space-x-2"
-                    asChild
-                  >
-                    <Link to="/agent">
-                      <MessageCircle className="h-4 w-4" />
-                      <span>Build Agent with AI</span>
-                    </Link>
-                  </Button>
-                )
-              )}
+              ) : null}
 
               {/* Mobile menu button */}
               <div className="md:hidden">
@@ -208,97 +274,191 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
             </div>
           </div>
 
-          {/* Mobile Navigation */}
-          <AnimatePresence>
-            {isMobileMenuOpen && (
-              <motion.div
-                className="md:hidden border-t fixed left-0 right-0 top-16 bg-background z-40 shadow-lg"
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                transition={{ duration: 0.2 }}
-              >
-                <div className="px-2 pt-2 pb-3 space-y-1">
+          {/* Mobile Navigation Overlay - moved outside nav container */}
+        </div>
+      </nav>
+
+      {/* Mobile Navigation Overlay */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              className="md:hidden fixed inset-0 bg-black/50 z-[100]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setIsMobileMenuOpen(false)}
+            />
+            {/* Slide-out drawer */}
+            <motion.div
+              className="md:hidden fixed right-0 top-0 h-full w-80 max-w-[85vw] bg-background z-[101] shadow-2xl border-l overflow-y-auto overflow-x-hidden"
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            >
+              <div className="flex flex-col h-full w-full">
+                {/* Header */}
+                <div className="flex items-center justify-between p-4 border-b shrink-0">
+                  <h2 className="text-lg font-semibold text-foreground">
+                    Menu
+                  </h2>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
+                {/* Navigation links */}
+                <div className="flex-1 px-4 py-4 space-y-2 overflow-y-auto overflow-x-hidden w-full">
                   {navigation.map((item) => {
-                    const isActive = location.pathname === item.href;
+                    const isActive =
+                      location.pathname === item.href ||
+                      (item.href.startsWith("#") &&
+                        location.hash === item.href);
+                    const isAnchor = item.href.startsWith("#");
+
+                    if (isAnchor) {
+                      return (
+                        <a
+                          key={item.name}
+                          href={item.href}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setIsMobileMenuOpen(false);
+                            const targetId = item.href.replace("#", "");
+
+                            // If not on home page, navigate to home with hash
+                            if (location.pathname === "/") {
+                              // Already on home page, update hash and scroll
+                              globalThis.history.pushState(null, "", item.href);
+                              const element = document.getElementById(targetId);
+                              if (element) {
+                                element.scrollIntoView({
+                                  behavior: "smooth",
+                                  block: "start",
+                                });
+                              }
+                            } else {
+                              navigate(`/${item.href}`, { replace: false });
+                            }
+                          }}
+                          className={`block w-full px-4 py-3 rounded-lg text-base font-medium transition-colors text-left ${
+                            isActive
+                              ? "text-brand bg-brand/10"
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                          }`}
+                        >
+                          {item.name}
+                        </a>
+                      );
+                    }
+
                     return (
                       <Link
                         key={item.name}
                         to={item.href}
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center space-x-2 px-3 py-2 rounded-md text-base font-medium transition-colors ${
+                        className={`block w-full px-4 py-3 rounded-lg text-base font-medium transition-colors text-left ${
                           isActive
-                            ? "text-primary bg-primary/10"
-                            : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                            ? "text-brand bg-brand/10"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
                         }`}
                       >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.name}</span>
+                        {item.name}
                       </Link>
                     );
                   })}
-                  {user ? (
-                    <div className="mt-2 space-y-1">
-                      {/* Account Switcher */}
-                      <div className="px-3 py-2">
-                        <AccountSwitcher />
-                      </div>
+                  {/* Contact button in mobile menu */}
+                  {contactButton && (
+                    <a
+                      href={contactButton.href}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setIsMobileMenuOpen(false);
+                        const targetId = contactButton.href.replace("#", "");
 
-                      {/* User Email */}
-                      <div className="px-3 py-2 border-b border-border">
-                        <p className="text-sm text-muted-foreground">
-                          {user.email}
-                        </p>
-                      </div>
-
-                      {/* Settings Option */}
-                      <Link
-                        to="/settings"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className="flex items-center space-x-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors rounded-md"
-                      >
-                        <Settings className="h-4 w-4" />
-                        <span>Settings</span>
-                      </Link>
-
-                      {/* Sign Out Option */}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          handleSignOut();
-                          setIsMobileMenuOpen(false);
-                        }}
-                        className="w-full justify-start"
-                      >
-                        <LogOut className="h-4 w-4 mr-2" />
-                        <span>Sign Out</span>
-                      </Button>
-                    </div>
-                  ) : (
-                    import.meta.env.VITE_SHOW_AI_FEATURES === "true" && (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        className="w-full justify-start mt-2"
-                        asChild
-                      >
-                        <Link
-                          to="/agent"
-                          onClick={() => setIsMobileMenuOpen(false)}
-                        >
-                          <MessageCircle className="h-4 w-4 mr-2" />
-                          <span>Build Agent with AI</span>
-                        </Link>
-                      </Button>
-                    )
+                        // If not on home page, navigate to home with hash
+                        if (location.pathname === "/") {
+                          // Already on home page, update hash and scroll
+                          globalThis.history.pushState(
+                            null,
+                            "",
+                            contactButton.href
+                          );
+                          const element = document.getElementById(targetId);
+                          if (element) {
+                            element.scrollIntoView({
+                              behavior: "smooth",
+                              block: "start",
+                            });
+                          }
+                        } else {
+                          navigate(`/${contactButton.href}`, {
+                            replace: false,
+                          });
+                        }
+                      }}
+                      className={`flex items-center space-x-2 w-full px-4 py-3 rounded-lg text-base font-medium transition-colors ${
+                        location.hash === contactButton.href
+                          ? "text-brand bg-brand/10"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <contactButton.icon className="h-5 w-5 shrink-0" />
+                      <span>{contactButton.name}</span>
+                    </a>
                   )}
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </nav>
+                {/* User section */}
+                {user && (
+                  <div className="border-t px-4 py-4 space-y-3">
+                    {/* Account Switcher */}
+                    <div>
+                      <AccountSwitcher />
+                    </div>
+
+                    {/* User Email */}
+                    <div className="pb-3 border-b border-border">
+                      <p className="text-sm text-muted-foreground">
+                        {user.email}
+                      </p>
+                    </div>
+
+                    {/* Settings Option */}
+                    <Link
+                      to="/settings"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className="flex items-center space-x-2 px-4 py-3 text-sm text-muted-foreground hover:text-foreground hover:bg-accent transition-colors rounded-lg"
+                    >
+                      <Settings className="h-5 w-5" />
+                      <span>Settings</span>
+                    </Link>
+
+                    {/* Sign Out Option */}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        handleSignOut();
+                        setIsMobileMenuOpen(false);
+                      }}
+                      className="w-full justify-start"
+                    >
+                      <LogOut className="h-5 w-5 mr-2" />
+                      <span>Sign Out</span>
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Main Content */}
       <motion.main
@@ -315,18 +475,27 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
         <footer className="border-t bg-background">
           <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-              <div className="flex items-center space-x-2">
-                <Logo size="sm" />
-                <span className="text-sm text-muted-foreground">
-                  © 2024 Bloxable.io. All rights reserved.
+              <div className="flex flex-col space-y-2">
+                <div className="flex items-center space-x-2">
+                  <Logo size="sm" />
+                  <span className="text-sm font-semibold text-foreground">
+                    Bloxable.io
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground max-w-md">
+                  Inexpensive bespoke AI solutions for local businesses.
+                  Currently serving Northern Michigan.
+                </p>
+                <span className="text-xs text-muted-foreground">
+                  © 2025-2026 Bloxable.io. All rights reserved.
                 </span>
               </div>
               <div className="flex items-center space-x-6 text-sm text-muted-foreground">
                 <Link
-                  to="/seller"
+                  to="/#contact"
                   className="hover:text-foreground transition-colors"
                 >
-                  Sell your workflows
+                  Contact
                 </Link>
                 <Link
                   to="/privacy"
@@ -340,15 +509,9 @@ export default function Layout({ children, hideFooter = false }: LayoutProps) {
                 >
                   Terms of Service
                 </Link>
-                <button
-                  className="hover:text-foreground transition-colors"
-                  onClick={() => {
-                    /* TODO: Implement contact modal or page */
-                  }}
-                  aria-label="Contact us"
-                >
-                  Contact
-                </button>
+                <div className="text-xs text-muted-foreground">
+                  Serving Northern Michigan
+                </div>
                 {/* Theme Toggle */}
                 <div className="flex items-center space-x-1">
                   <Button
